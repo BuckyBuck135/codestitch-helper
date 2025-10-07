@@ -1,133 +1,149 @@
 {
-  "name": "codestitch-helper",
-  "displayName": "CodeStitch Helper",
-  "description": "",
-  "version": "1.3.0",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/calebneuf/codestitch-helper.git"
-  },
-  "publisher": "NeuDigital",
-  "engines": {
-    "vscode": "^1.50.0"
-  },
-  "categories": [
-    "Other"
-  ],
-  "activationEvents": [
-    "*"
-  ],
-  "main": "./out/extension.js",
-  "contributes": {
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "codestitchHelperContainer",
-          "title": "CodeStitch Helper",
-          "icon": "resources/ai.svg"
-        }
-      ]
-    },
-    "views": {
-      "explorer": [
-        {
-          "id": "sectionNavigator",
-          "name": "CodeStitch Styles Navigator",
-          "visibility": "visible",
-          "contextualTitle": "CodeStitch Sections Navigator"
-        }
-      ],
-      "codestitchHelperContainer": [
-        {
-          "id": "codestitchHelper",
-          "name": "CodeStitch Helper",
-          "type": "webview"
-        }
-      ]
-    },
-    "commands": [
-      {
-        "command": "codestitchHelper.setupEleventySharpImages",
-        "title": "Set up 11ty Sharp Images"
-      },
-      {
-        "command": "codestitchHelper.openSection",
-        "title": "Open CodeStitch Sections Navigator"
-      },
-      {
-        "command": "codestitchHelper.selectAll",
-        "title": "Select All Section Text"
-      },
-      {
-        "command": "codestitchHelper.replaceNavTabs",
-        "title": "Replace Static Tabs with 11ty Dynamics Tabs"
-      },
-      {
-        "command": "codestitchHelper.addIconClass",
-        "title": "Add cs-icon class to svg"
-      },
-      {
-        "command": "codestitchHelper.convertToNetlifyForm",
-        "title": "Convert Form to Netlify Form with reCAPTCHA"
-      },
-      {
-        "command": "codestitchHelper.reorderSections",
-        "title": "Reorder Sections",
-        "category": "CodeStitch Helper"
-      },
-      {
-        "command": "codestitchHelper.downloadSvgAssets",
-        "title": "Download SVG Assets",
-        "category": "CodeStitch Helper"
-      },
-      {
-        "command": "codestitchHelper.optimizeSite",
-        "title": "Optimize Site",
-        "category": "CodeStitch Helper"
-      },
-      {
-        "command": "codestitchHelper.optimizeAstroImages",
-        "title": "Optimize Images for Astro",
-        "category": "CodeStitch Helper"
-      }
-    ],
-    "menus": {
-      "view/item/context": [
-        {
-          "command": "codestitchHelper.selectAll",
-          "when": "viewItem == selectableSection",
-          "group": "inline"
-        }
-      ],
-      "editor/context": [
-        {
-          "command": "codestitchHelper.replaceNavTabs",
-          "when": "editorLangId == html"
-        }
-      ]
-    }
-  },
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
-    "lint": "eslint src",
-    "test": "vscode-test"
-  },
-  "devDependencies": {
-    "@types/mocha": "^10.0.7",
-    "@types/node": "20.x",
-    "@types/vscode": "^1.50.0",
-    "@typescript-eslint/eslint-plugin": "^8.3.0",
-    "@typescript-eslint/parser": "^8.3.0",
-    "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1",
-    "eslint": "^9.9.1",
-    "typescript": "^5.5.4"
-  },
-  "dependencies": {
-    "@astrojs/compiler": "^2.13.0",
-    "es-module-lexer": "^1.7.0"
-  }
+	"name": "codestitch-helper",
+	"displayName": "CodeStitch Helper",
+	"description": "",
+	"version": "1.3.0",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/calebneuf/codestitch-helper.git"
+	},
+	"publisher": "NeuDigital",
+	"engines": {
+		"vscode": "^1.50.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onLanguage:html",
+		"onLanguage:css",
+		"onLanguage:scss",
+		"onLanguage:sass",
+		"onLanguage:less",
+		"onLanguage:astro",
+		"onLanguage:njk",
+		"onLanguage:nunjucks"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "codestitchHelperContainer",
+					"title": "CodeStitch Helper",
+					"icon": "resources/codestitch-logomark.svg"
+				}
+			]
+		},
+		"views": {
+			"explorer": [
+				{
+					"id": "sectionNavigator",
+					"name": "CodeStitch Styles Navigator",
+					"visibility": "visible",
+					"contextualTitle": "CodeStitch Sections Navigator",
+					"icon": "resources/codestitch-logomark.svg"
+				}
+			],
+			"codestitchHelperContainer": [
+				{
+					"id": "codestitchHelper",
+					"name": "CodeStitch Helper",
+					"type": "webview",
+					"icon": "resources/codestitch-logomark.svg"
+				}
+			]
+		},
+		"commands": [
+			{
+				"command": "codestitchHelper.eleventy.setupSharpImages",
+				"title": "Eleventy: Set up Sharp Images",
+				"category": "CodeStitch Helper"
+			},
+			{
+				"command": "codestitchHelper.eleventy.replaceNavTabs",
+				"title": "Eleventy: Replace Static Tabs with Dynamic Tabs",
+				"category": "CodeStitch Helper"
+			},
+			{
+				"command": "codestitchHelper.eleventy.optimizeImages",
+				"title": "Eleventy: Optimize Images",
+				"category": "CodeStitch Helper"
+			},
+			{
+				"command": "codestitchHelper.astro.optimizeImages",
+				"title": "Astro: Optimize Images",
+				"category": "CodeStitch Helper"
+			},
+			{
+				"command": "codestitchHelper.openSection",
+				"title": "Open CodeStitch Sections Navigator"
+			},
+			{
+				"command": "codestitchHelper.selectAll",
+				"title": "Select All Section Text"
+			},
+			{
+				"command": "codestitchHelper.addIconClass",
+				"title": "Add cs-icon class to svg"
+			},
+			{
+				"command": "codestitchHelper.convertToNetlifyForm",
+				"title": "Convert Form to Netlify Form with reCAPTCHA"
+			},
+			{
+				"command": "codestitchHelper.reorderSections",
+				"title": "Reorder Sections",
+				"category": "CodeStitch Helper"
+			},
+			{
+				"command": "codestitchHelper.downloadSvgAssets",
+				"title": "Download SVG Assets",
+				"category": "CodeStitch Helper"
+			},
+			{
+				"command": "codestitchHelper.setProjectType",
+				"title": "Set Project Type (Eleventy/Astro)",
+				"category": "CodeStitch Helper"
+			}
+		],
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "codestitchHelper.selectAll",
+					"when": "viewItem == selectableSection",
+					"group": "inline"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "codestitchHelper.eleventy.replaceNavTabs",
+					"when": "editorLangId == html"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"lint": "eslint src",
+		"test": "vscode-test"
+	},
+	"devDependencies": {
+		"@types/mocha": "^10.0.7",
+		"@types/node": "20.x",
+		"@types/vscode": "^1.50.0",
+		"@typescript-eslint/eslint-plugin": "^8.3.0",
+		"@typescript-eslint/parser": "^8.3.0",
+		"@vscode/test-cli": "^0.0.10",
+		"@vscode/test-electron": "^2.4.1",
+		"eslint": "^9.9.1",
+		"typescript": "^5.5.4"
+	},
+	"dependencies": {
+		"@astrojs/compiler": "^2.13.0",
+		"es-module-lexer": "^1.7.0"
+	}
 }
