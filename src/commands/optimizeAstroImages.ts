@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { calculateNewPicture } from "../utils/astro-transform";
-import { addPictureToFrontmatter, addPlaceholderImageToFrontmatter } from "../utils/import-lexer";
+import { calculateNewPicture, urlToVariableName, calculateRelativePath } from "../utils/astro-transform";
+import { addPictureToFrontmatter, addPlaceholderImageToFrontmatter, addImageImportToFrontmatter } from "../utils/import-lexer";
 
 // Helper to walk AST and find nodes
 function walkNode(node: any, callback: (node: any) => void) {
@@ -35,6 +35,50 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 	}
 
 	try {
+		// Show quick pick for image source selection
+		const choice = await vscode.window.showQuickPick([
+			{
+				label: "$(file-media) Choose image from assets folder",
+				description: "Pick your actual image now",
+				action: "pick"
+			},
+			{
+				label: "$(circle-slash) Use placeholder for now",
+				description: "I'll set the image later",
+				action: "placeholder"
+			}
+		], {
+			placeHolder: "Select image source for Picture component"
+		});
+
+		// Default to placeholder if user dismisses or doesn't choose
+		let srcVariableName = "placeholderImage";
+		let imagePath = "../assets/images/placeholder-image.png";
+		let useCustomImage = false;
+
+		if (choice?.action === "pick") {
+			// Open file picker
+			const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+			const defaultUri = workspaceFolder
+				? vscode.Uri.joinPath(workspaceFolder.uri, "src/assets/images")
+				: undefined;
+
+			const imageUri = await vscode.window.showOpenDialog({
+				filters: { 'Images': ['jpg', 'jpeg', 'png', 'webp', 'svg', 'avif'] },
+				defaultUri: defaultUri,
+				canSelectMany: false,
+				openLabel: "Select Image"
+			});
+
+			if (imageUri && imageUri[0]) {
+				// User selected an image
+				useCustomImage = true;
+				imagePath = calculateRelativePath(document.uri.fsPath, imageUri[0].fsPath);
+				srcVariableName = urlToVariableName(imageUri[0].fsPath);
+			}
+			// If user cancelled file picker, fall back to placeholder (already set above)
+		}
+
 		// Dynamically import ESM modules
 		const { parse } = await import("@astrojs/compiler");
 		const { serialize, is } = await import("@astrojs/compiler/utils");
@@ -59,23 +103,34 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 			return;
 		}
 
-		// Transform the picture node in place
-		const newNode = calculateNewPicture(pictureNode);
+		// Transform the picture node in place with chosen src variable
+		const newNode = calculateNewPicture(pictureNode, srcVariableName);
 		(pictureNode as any).type = newNode.type;
 		(pictureNode as any).name = newNode.name;
 		(pictureNode as any).attributes = newNode.attributes;
 		(pictureNode as any).children = newNode.children;
 
-		// Update frontmatter to add Picture import and placeholderImage import
+		// Update frontmatter to add Picture import and image import
 		if (frontmatterNode) {
 			let updatedValue = await addPictureToFrontmatter(frontmatterNode.value);
-			updatedValue = await addPlaceholderImageToFrontmatter(updatedValue);
+			if (useCustomImage) {
+				updatedValue = await addImageImportToFrontmatter(updatedValue, srcVariableName, imagePath);
+			} else {
+				updatedValue = await addPlaceholderImageToFrontmatter(updatedValue);
+			}
 			frontmatterNode.value = updatedValue;
 		} else {
-			// No frontmatter exists, create it with both imports
+			// No frontmatter exists, create it with imports
+			let importStatements = '\nimport { Picture } from "astro:assets";\n';
+			if (useCustomImage) {
+				importStatements += `import ${srcVariableName} from "${imagePath}";\n`;
+			} else {
+				importStatements += 'import placeholderImage from "../assets/images/placeholder-image.png";\n';
+			}
+
 			const newFrontmatter = {
 				type: "frontmatter" as const,
-				value: 'import { Picture } from "astro:assets";\nimport placeholderImage from "../assets/images/placeholder-image.png";',
+				value: importStatements,
 				position: {
 					start: { line: 1, column: 1, offset: 0 },
 					end: { line: 1, column: 1, offset: 0 },

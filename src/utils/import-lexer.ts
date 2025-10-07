@@ -24,17 +24,21 @@ export const addPictureToFrontmatter = async (value: string) => {
 	const [imports] = await parse(value);
 	const importsAssets = imports.find((imp) => imp.n === "astro:assets");
 	if (!importsAssets) {
-		return `\nimport { Picture } from "astro:assets";\n${value}`;
+		// Always add newline before and after the import
+		const trimmedValue = value.trimStart();
+		return `\nimport { Picture } from "astro:assets";\n${trimmedValue}`;
 	}
 	return insertIntoImport(value, importsAssets, "Picture");
 };
+
 export const addImageToFrontmatter = async (value: string) => {
 	// The await is important for WASM loading reasons
 	const { parse } = await import("es-module-lexer");
 	const [imports] = await parse(value);
 	const importsAssets = imports.find((imp) => imp.n === "astro:assets");
 	if (!importsAssets) {
-		return `\nimport { Image } from "astro:assets";\n${value}`;
+		const trimmedValue = value.trimStart();
+		return `\nimport { Image } from "astro:assets";\n${trimmedValue}`;
 	}
 	return insertIntoImport(value, importsAssets, "Image");
 };
@@ -54,6 +58,27 @@ export const addPlaceholderImageToFrontmatter = async (value: string) => {
 		return value;
 	}
 
-	// Add the import at the beginning
-	return `import placeholderImage from "../assets/images/placeholder-image.png";\n${value}`;
+	// Always add newline before, trim any leading whitespace from value
+	const trimmedValue = value.trimStart();
+	return `\nimport placeholderImage from "../assets/images/placeholder-image.png";\n${trimmedValue}`;
+};
+
+export const addImageImportToFrontmatter = async (value: string, variableName: string, imagePath: string): Promise<string> => {
+	// The await is important for WASM loading reasons
+	const { parse } = await import("es-module-lexer");
+	const [imports] = await parse(value);
+
+	// Check if this exact import already exists
+	const hasImport = imports.some((imp) => {
+		const importPath = value.slice(imp.s, imp.e);
+		return importPath === imagePath;
+	});
+
+	if (hasImport) {
+		return value;
+	}
+
+	// Always add newline before, trim any leading whitespace from value
+	const trimmedValue = value.trimStart();
+	return `\nimport ${variableName} from "${imagePath}";\n${trimmedValue}`;
 };

@@ -7,7 +7,53 @@ const isPicture = (node: ElementNode) => node.name === "picture";
 
 const isImage = (node: ElementNode) => node.name === "img";
 
-export const calculateNewPicture = (node: ElementNode): ComponentNode => {
+export const urlToVariableName = (url: string): string => {
+  const path = require("path");
+
+  // Get just the filename (handles both Windows and Unix paths)
+  const filename = path.basename(url);
+
+  // Remove extension
+  const title = filename.split(".")[0];
+  if (!title) return "image";
+
+  // Remove all non-alphanumeric characters (including spaces) except hyphens and underscores
+  let cleanTitle = title.replace(/[^a-zA-Z0-9-_]/g, "");
+
+  // Convert kebab-case and snake_case to camelCase
+  cleanTitle = cleanTitle.replace(/[-_]([a-zA-Z0-9])/g, (match: any, char: any) =>
+    char.toUpperCase()
+  );
+
+  // Ensure it starts with a letter or underscore (valid JS identifier)
+  if (/^[0-9]/.test(cleanTitle)) {
+    cleanTitle = "img" + cleanTitle;
+  }
+
+  return cleanTitle || "image";
+};
+
+export const calculateRelativePath = (fromFilePath: string, toFilePath: string): string => {
+  const path = require("path");
+
+  // Get directory of the current file
+  const fromDir = path.dirname(fromFilePath);
+
+  // Calculate relative path
+  let relativePath = path.relative(fromDir, toFilePath);
+
+  // Convert Windows backslashes to forward slashes
+  relativePath = relativePath.replace(/\\/g, "/");
+
+  // Ensure it starts with ./ or ../
+  if (!relativePath.startsWith(".")) {
+    relativePath = "./" + relativePath;
+  }
+
+  return relativePath;
+};
+
+export const calculateNewPicture = (node: ElementNode, srcVariableName: string = "placeholderImage"): ComponentNode => {
   const { attributes: pictureAttributes, children } = node;
 
   // Find the img child element
@@ -21,12 +67,12 @@ export const calculateNewPicture = (node: ElementNode): ComponentNode => {
 
   const newAttributes: AttributeNode[] = [];
 
-  // Add src as placeholderImage expression
+  // Add src with provided variable name
   newAttributes.push({
     type: "attribute",
     kind: "expression",
     name: "src",
-    value: "placeholderImage",
+    value: srcVariableName,
   });
 
   // Handle class attributes specially
@@ -91,17 +137,17 @@ export const calculateNewPicture = (node: ElementNode): ComponentNode => {
   };
 };
 
-export const calculateNewImage = (node: ElementNode): ComponentNode => {
+export const calculateNewImage = (node: ElementNode, srcVariableName: string = "placeholderImage"): ComponentNode => {
   const { attributes } = node;
 
   const newAttributes: AttributeNode[] = [];
 
-  // Add src as placeholderImage expression
+  // Add src with provided variable name
   newAttributes.push({
     type: "attribute",
     kind: "expression",
     name: "src",
-    value: "placeholderImage",
+    value: srcVariableName,
   });
 
   // Handle class attributes specially - convert to expression
