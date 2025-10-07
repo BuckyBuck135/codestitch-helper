@@ -71,14 +71,44 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
       const endPosition = document.positionAt(match.index + match[0].length);
       const range = new vscode.Range(startPosition, endPosition);
 
-      // Add lens for the entire picture block
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Optimize sharp images",
-          command: "codestitchHelper.optimizeSharpImages",
-          arguments: [document, range],
-        })
-      );
+      // Get file extension to determine which optimization to show
+      const fileExtension = document.uri.path.split('.').pop()?.toLowerCase();
+
+      if (fileExtension === 'html' || fileExtension === 'htm') {
+        // Show Eleventy optimization for HTML files
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: "Optimize for Eleventy",
+            command: "codestitchHelper.optimizeSharpImages",
+            arguments: [document, range],
+          })
+        );
+      } else if (fileExtension === 'astro') {
+        // Show Astro optimization for Astro files
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: "Optimize for Astro",
+            command: "codestitchHelper.optimizeAstroImages",
+            arguments: [document, range],
+          })
+        );
+      } else {
+        // For other file types (njk, nunjucks, etc.), show both options
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: "Optimize for Eleventy",
+            command: "codestitchHelper.optimizeSharpImages",
+            arguments: [document, range],
+          })
+        );
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: "Optimize for Astro",
+            command: "codestitchHelper.optimizeAstroImages",
+            arguments: [document, range],
+          })
+        );
+      }
     }
 
     // Regex to find <section> tags with an id attribute
