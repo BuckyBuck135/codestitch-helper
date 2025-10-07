@@ -1,8 +1,11 @@
 import * as vscode from "vscode";
-import { navigateToSectionCSSCommandId } from "../commands/navigateToSectionCSS";
+import { navigateToSectionCSSCommandId } from "../commands/shared/navigateToSectionCSS";
+import { ProjectTypeManager } from "../services/projectTypeManager";
 
 export class CodeLensProvider implements vscode.CodeLensProvider {
   onDidChangeCodeLenses?: vscode.Event<void> | undefined;
+
+  constructor(private readonly projectTypeManager: ProjectTypeManager) {}
 
   public provideCodeLenses(
     document: vscode.TextDocument,
@@ -12,21 +15,22 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
     const text = document.getText();
     let match: RegExpExecArray | null;
 
-    // Regex to find the <div class="cs-ul-wrapper"> line
-    const divPattern = /<div class="cs-ul-wrapper">[\s\S]*?<\/div>/g;
-    while ((match = divPattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length); // Find the full <div> tag
-      const range = new vscode.Range(startPosition, endPosition);
+    // Regex to find the <div class="cs-ul-wrapper"> line (Eleventy only)
+    if (this.projectTypeManager.isEleventy()) {
+      const divPattern = /<div class="cs-ul-wrapper">[\s\S]*?<\/div>/g;
+      while ((match = divPattern.exec(text)) !== null) {
+        const startPosition = document.positionAt(match.index);
+        const endPosition = document.positionAt(match.index + match[0].length);
+        const range = new vscode.Range(startPosition, endPosition);
 
-      // Create a new CodeLens above the <div>
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Make compatible with 11ty",
-          command: "codestitchHelper.replaceNavTabs",
-          arguments: [document],
-        })
-      );
+        codeLenses.push(
+          new vscode.CodeLens(range, {
+            title: "Make compatible with 11ty",
+            command: "codestitchHelper.eleventy.replaceNavTabs",
+            arguments: [document],
+          })
+        );
+      }
     }
 
     const formPattern = /<form[\s\S]*?>/g;
@@ -71,40 +75,20 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
       const endPosition = document.positionAt(match.index + match[0].length);
       const range = new vscode.Range(startPosition, endPosition);
 
-      // Get file extension to determine which optimization to show
-      const fileExtension = document.uri.path.split('.').pop()?.toLowerCase();
-
-      if (fileExtension === 'html' || fileExtension === 'htm') {
-        // Show Eleventy optimization for HTML files
+      // Show optimization based on project type
+      if (this.projectTypeManager.isEleventy()) {
         codeLenses.push(
           new vscode.CodeLens(range, {
-            title: "Optimize for Eleventy",
-            command: "codestitchHelper.optimizeSharpImages",
+            title: "Optimize Images",
+            command: "codestitchHelper.eleventy.optimizeImages",
             arguments: [document, range],
           })
         );
-      } else if (fileExtension === 'astro') {
-        // Show Astro optimization for Astro files
+      } else if (this.projectTypeManager.isAstro()) {
         codeLenses.push(
           new vscode.CodeLens(range, {
-            title: "Optimize for Astro",
-            command: "codestitchHelper.optimizeAstroImages",
-            arguments: [document, range],
-          })
-        );
-      } else {
-        // For other file types (njk, nunjucks, etc.), show both options
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: "Optimize for Eleventy",
-            command: "codestitchHelper.optimizeSharpImages",
-            arguments: [document, range],
-          })
-        );
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: "Optimize for Astro",
-            command: "codestitchHelper.optimizeAstroImages",
+            title: "Optimize Images",
+            command: "codestitchHelper.astro.optimizeImages",
             arguments: [document, range],
           })
         );

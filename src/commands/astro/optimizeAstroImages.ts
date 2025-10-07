@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { calculateNewPicture, urlToVariableName, calculateRelativePath } from "../utils/astro-transform";
-import { addPictureToFrontmatter, addPlaceholderImageToFrontmatter, addImageImportToFrontmatter } from "../utils/import-lexer";
+import { calculateNewPicture, urlToVariableName, calculateRelativePath } from "../../utils/astroTransform";
+import { addPictureToFrontmatter, addPlaceholderImageToFrontmatter, addImageImportToFrontmatter } from "../../utils/importLexer";
 
 interface ImageSourceSelection {
 	srcVariableName: string;

@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { excludedDirectories } from "../constants";
-import { findAllStyleFiles } from "../helperFunctions";
+import { excludedDirectories } from "../../constants";
+import { findAllStyleFiles } from "../../helperFunctions";
 
 // Initialize cache to store section ID to styling file path and position mappings
 const cssCache: Map<string, { path: string; position: vscode.Position }> =
@@ -70,7 +70,7 @@ export async function navigateToSectionCSS(
     }
 
     if (stylingPath && position) {
-      const uri = vscode.Uri.file(stylingPath);
+      const uri = vscode.Uri.file(stylingPath as string);
       const doc = await vscode.workspace.openTextDocument(uri);
       await vscode.window.showTextDocument(doc, {
         selection: new vscode.Range(position, position),
