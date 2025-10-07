@@ -7,6 +7,9 @@
 		"type": "git",
 		"url": "https://github.com/calebneuf/codestitch-helper.git"
 	},
+	"bugs": {
+		"url": "https://github.com/calebneuf/codestitch-helper/issues"
+	},
 	"publisher": "NeuDigital",
 	"engines": {
 		"vscode": "^1.50.0"
@@ -121,6 +124,11 @@
 					"when": "editorLangId == html"
 				}
 			]
+		}
+	},
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": true
 		}
 	},
 	"scripts": {
