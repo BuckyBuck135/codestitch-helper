@@ -55,6 +55,7 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 		let srcVariableName = "placeholderImage";
 		let imagePath = "../assets/images/placeholder-image.png";
 		let useCustomImage = false;
+		let altText = "";
 
 		if (choice?.action === "pick") {
 			// Open file picker
@@ -75,6 +76,16 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 				useCustomImage = true;
 				imagePath = calculateRelativePath(document.uri.fsPath, imageUri[0].fsPath);
 				srcVariableName = urlToVariableName(imageUri[0].fsPath);
+
+				// Prompt for alt text
+				const userAltText = await vscode.window.showInputBox({
+					prompt: "Enter alt text for the image (optional)",
+					placeHolder: "Descriptive text for accessibility",
+					value: ""
+				});
+
+				// If user dismisses or leaves blank, use empty string
+				altText = userAltText ?? "";
 			}
 			// If user cancelled file picker, fall back to placeholder (already set above)
 		}
@@ -103,8 +114,8 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 			return;
 		}
 
-		// Transform the picture node in place with chosen src variable
-		const newNode = calculateNewPicture(pictureNode, srcVariableName);
+		// Transform the picture node in place with chosen src variable and alt text
+		const newNode = calculateNewPicture(pictureNode, srcVariableName, altText);
 		(pictureNode as any).type = newNode.type;
 		(pictureNode as any).name = newNode.name;
 		(pictureNode as any).attributes = newNode.attributes;

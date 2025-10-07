@@ -53,7 +53,7 @@ export const calculateRelativePath = (fromFilePath: string, toFilePath: string):
   return relativePath;
 };
 
-export const calculateNewPicture = (node: ElementNode, srcVariableName: string = "placeholderImage"): ComponentNode => {
+export const calculateNewPicture = (node: ElementNode, srcVariableName: string = "placeholderImage", altText: string = ""): ComponentNode => {
   const { attributes: pictureAttributes, children } = node;
 
   // Find the img child element
@@ -73,6 +73,17 @@ export const calculateNewPicture = (node: ElementNode, srcVariableName: string =
     kind: "expression",
     name: "src",
     value: srcVariableName,
+  });
+
+  // Add alt text (always use provided altText, never reuse original)
+  // Ensure altText is a string (convert undefined to empty string just in case)
+  const finalAltText = altText || "";
+  newAttributes.push({
+    type: "attribute",
+    kind: "quoted",
+    name: "alt",
+    value: finalAltText,
+    raw: `"${finalAltText}"`, // Raw includes the quotes for serializer
   });
 
   // Handle class attributes specially
@@ -104,8 +115,8 @@ export const calculateNewPicture = (node: ElementNode, srcVariableName: string =
   }
 
   // Add other attributes from img, converting specific numeric ones to expressions
-  // Exclude src, class, decoding, loading, and height
-  const excludedAttrs = ["src", "class", "decoding", "loading", "height"];
+  // Exclude src, class, decoding, loading, height, and alt (alt is handled separately)
+  const excludedAttrs = ["src", "class", "decoding", "loading", "height", "alt"];
   const numericAttrs = ["width"];
 
   for (const attr of imgChild.attributes as any[]) {

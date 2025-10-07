@@ -58,9 +58,26 @@ export const addPlaceholderImageToFrontmatter = async (value: string) => {
 		return value;
 	}
 
-	// Always add newline before, trim any leading whitespace from value
+	const importStatement = 'import placeholderImage from "../assets/images/placeholder-image.png";';
+
+	// If there are existing imports, insert after the last one
+	if (imports.length > 0) {
+		const lastImport = imports[imports.length - 1];
+		let insertPosition = lastImport.se;
+
+		// Find the end of the line (after any semicolons, comments, etc.)
+		const afterImport = value.slice(insertPosition);
+		const newlineMatch = afterImport.match(/\n/);
+		if (newlineMatch) {
+			insertPosition += newlineMatch.index! + 1; // Position after the newline
+		}
+
+		return value.slice(0, insertPosition) + importStatement + '\n' + value.slice(insertPosition);
+	}
+
+	// No existing imports, add at the beginning
 	const trimmedValue = value.trimStart();
-	return `\nimport placeholderImage from "../assets/images/placeholder-image.png";\n${trimmedValue}`;
+	return `\n${importStatement}\n${trimmedValue}`;
 };
 
 export const addImageImportToFrontmatter = async (value: string, variableName: string, imagePath: string): Promise<string> => {
@@ -78,7 +95,24 @@ export const addImageImportToFrontmatter = async (value: string, variableName: s
 		return value;
 	}
 
-	// Always add newline before, trim any leading whitespace from value
+	const importStatement = `import ${variableName} from "${imagePath}";`;
+
+	// If there are existing imports, insert after the last one
+	if (imports.length > 0) {
+		const lastImport = imports[imports.length - 1];
+		let insertPosition = lastImport.se;
+
+		// Find the end of the line (after any semicolons, comments, etc.)
+		const afterImport = value.slice(insertPosition);
+		const newlineMatch = afterImport.match(/\n/);
+		if (newlineMatch) {
+			insertPosition += newlineMatch.index! + 1; // Position after the newline
+		}
+
+		return value.slice(0, insertPosition) + importStatement + '\n' + value.slice(insertPosition);
+	}
+
+	// No existing imports, add at the beginning
 	const trimmedValue = value.trimStart();
-	return `\nimport ${variableName} from "${imagePath}";\n${trimmedValue}`;
+	return `\n${importStatement}\n${trimmedValue}`;
 };
