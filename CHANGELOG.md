@@ -1,5 +1,33 @@
 # Change Log
 
+## 2.0.0
+
+### MAJOR RELEASE - Framework Separation Architecture for Astro Support
+
+**New Features:**
+- ✨ **Astro Support** - Sets up support for Astro projects with image optimization.
+- 🎯 **Smart Project Detection** - Auto-detects Eleventy or Astro projects
+- 🔒 **Project Type Validation** - Warns when selecting mismatched project type
+- 🎨 **Enhanced Sidebar UI** - Project type toggle with framework-specific actions
+- 📁 **Organized Architecture** - Commands separated into `eleventy/`, `astro/`, and `shared/` folders
+
+**Breaking Changes:**
+- Command IDs have been renamed with framework prefixes:
+  - `codestitchHelper.replaceNavTabs` → `codestitchHelper.eleventy.replaceNavTabs`
+  - `codestitchHelper.optimizeSharpImages` → `codestitchHelper.eleventy.optimizeImages`
+  - `codestitchHelper.setupEleventySharpImages` → `codestitchHelper.eleventy.setupSharpImages`
+  - `codestitchHelper.optimizeAstroImages` → `codestitchHelper.astro.optimizeImages`
+
+**Performance Improvements:**
+- Activation events optimized (removed `*` wildcard)
+- Extension only activates for relevant file types
+
+**Other Changes:**
+- All files renamed to camelCase convention
+- Added `bugs` URL for issue reporting
+- Added `untrustedWorkspaces` capability declaration
+- The 'Optimise Site' button in the sidebar was not wired to any command. Replaced it with 'Download SVG assets' command.
+
 ## 1.3.0
 
 * Added "Download SVG Assets" command. Downloads all SVGS from CDN and adds them to local file directory.

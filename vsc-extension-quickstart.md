@@ -26,14 +26,15 @@
 * You can open the full set of our API when you open the file `node_modules/@types/vscode/index.d.ts`.
 
 ## Run tests
-
-* Install the [Extension Test Runner](https://marketplace.visualstudio.com/items?itemName=ms-vscode.extension-test-runner)
-* Run the "watch" task via the **Tasks: Run Task** command. Make sure this is running, or tests might not be discovered.
-* Open the Testing view from the activity bar and click the Run Test" button, or use the hotkey `Ctrl/Cmd + ; A`
-* See the output of the test result in the Test Results view.
-* Make changes to `src/test/extension.test.ts` or create new test files inside the `test` folder.
-  * The provided test runner will only consider files matching the name pattern `**.test.ts`.
-  * You can create folders inside the `test` folder to structure your tests any way you want.
+* Ensure your code is compiled before running tests
+* Press `F5`. This will launch a separate VS Code Extension Development Host window where the extension will be active - you can test all commands and features
+* To test in different project types:
+  * Use **File → Open Folder** to open an Eleventy or Astro project
+  * The extension will auto-detect the project type and show a notification
+  * Test framework-specific commands are available based on the detected type
+* Make changes to the code and reload the Extension Development Host window with `Ctrl+R` (or `Cmd+R` on Mac)
+* Check the **Debug Console** in the main window for extension logs and errors
+* Set breakpoints in your TypeScript code to debug step-by-step
 
 ## Go further
 
@@ -42,3 +43,10 @@
 * [Publish your extension](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) on the VS Code extension marketplace.
 * Automate builds by setting up [Continuous Integration](https://code.visualstudio.com/api/working-with-extensions/continuous-integration).
 * Integrate to the [report issue](https://code.visualstudio.com/api/get-started/wrapping-up#issue-reporting) flow to get issue and feature requests reported by users.
+* [Not implemented yet] - Install the [Extension Test Runner](https://marketplace.visualstudio.com/items?itemName=ms-vscode.extension-test-runner)
+* Run the "watch" task via the **Tasks: Run Task** command. Make sure this is running, or tests might not be discovered.
+* Open the Testing view from the activity bar and click the Run Test" button, or use the hotkey `Ctrl/Cmd + ; A`
+* See the output of the test result in the Test Results view.
+* Make changes to `src/test/extension.test.ts` or create new test files inside the `test` folder.
+  * The provided test runner will only consider files matching the name pattern `**.test.ts`.
+  * You can create folders inside the `test` folder to structure your tests any way you want.
