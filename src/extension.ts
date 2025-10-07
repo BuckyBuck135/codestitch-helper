@@ -7,6 +7,7 @@ import { CodeLensProvider } from "./providers/codeLensProvider";
 import { addIconClass } from "./commands/addIconClass";
 import { convertToNetlifyForm } from "./commands/convertToNetlifyForm";
 import { optimizeSharpImages } from "./commands/optimizeSharpImages";
+import { optimizeAstroImages } from "./commands/optimizeAstroImages";
 import {
   navigateToSectionCSS,
   navigateToSectionCSSCommandId,
@@ -72,6 +73,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  const optimizeAstroImagesDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.optimizeAstroImages",
+    (document: vscode.TextDocument, range: vscode.Range) => {
+      optimizeAstroImages(document, range);
+    }
+  );
+
   const navigateToSectionCSSDisposable = vscode.commands.registerCommand(
     navigateToSectionCSSCommandId,
     navigateToSectionCSS
@@ -129,6 +137,7 @@ export function activate(context: vscode.ExtensionContext) {
     "njk",
     "nunjucks",
     "html",
+    "astro",
   ];
   vscode.workspace.onDidChangeTextDocument((event) => {
     if (supportedLanguages.includes(event.document.languageId)) {
@@ -150,6 +159,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     optimizeSharpImagesDisposable,
+    optimizeAstroImagesDisposable,
     openSectionDisposable,
     selectAllDisposable,
     replaceNavTabsDisposable,

@@ -84,6 +84,11 @@
         "command": "codestitchHelper.optimizeSite",
         "title": "Optimize Site",
         "category": "CodeStitch Helper"
+      },
+      {
+        "command": "codestitchHelper.optimizeAstroImages",
+        "title": "Optimize Images for Astro",
+        "category": "CodeStitch Helper"
       }
     ],
     "menus": {
@@ -111,14 +116,18 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.50.0",
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",
+    "@types/vscode": "^1.50.0",
     "@typescript-eslint/eslint-plugin": "^8.3.0",
     "@typescript-eslint/parser": "^8.3.0",
-    "eslint": "^9.9.1",
-    "typescript": "^5.5.4",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.9.1",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@astrojs/compiler": "^2.13.0",
+    "es-module-lexer": "^1.7.0"
   }
 }
