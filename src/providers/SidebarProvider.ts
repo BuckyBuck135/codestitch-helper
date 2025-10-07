@@ -19,9 +19,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.command) {
-        case "optimizeSite": {
-          vscode.window.showInformationMessage("Optimizing site...");
-          // Add your site optimization logic here
+        case "downloadSvgAssets": {
+          vscode.commands.executeCommand("codestitchHelper.downloadSvgAssets");
           break;
         }
       }

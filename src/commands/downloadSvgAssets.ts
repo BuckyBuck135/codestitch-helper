@@ -4,132 +4,123 @@ import * as path from "path";
 import * as https from "https";
 
 export async function downloadSvgAssets() {
-  const workspaceFolders = vscode.workspace.workspaceFolders;
-  if (!workspaceFolders) {
-    vscode.window.showErrorMessage("No workspace folder is open.");
-    return;
-  }
+	// Auto-detect based on project files
+	const isAstroProject = await vscode.workspace.findFiles("**/astro.config.{mjs,js,ts}", null, 1);
+	const isEleventyProject = await vscode.workspace.findFiles("**/.eleventy.js", null, 1);
 
-  // Prompt the user to select the directory to search
-  const searchUri = await vscode.window.showOpenDialog({
-    canSelectFolders: true,
-    canSelectFiles: false,
-    openLabel: "Select directory to search for SVG URLs",
-    defaultUri: workspaceFolders[0].uri,
-  });
+	let filePattern = "**/*.html";
+	if (isAstroProject.length > 0) {
+		filePattern = "**/*.{html,astro}";
+	}
 
-  if (!searchUri || searchUri.length === 0) {
-    vscode.window.showWarningMessage("No search directory selected.");
-    return;
-  }
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (!workspaceFolders) {
+		vscode.window.showErrorMessage("No workspace folder is open.");
+		return;
+	}
 
-  const searchDirectory = searchUri[0];
+	// Prompt the user to select the directory to search
+	const searchUri = await vscode.window.showOpenDialog({
+		canSelectFolders: true,
+		canSelectFiles: false,
+		openLabel: "Select directory to search for SVG URLs",
+		defaultUri: workspaceFolders[0].uri,
+	});
 
-  // Prompt the user to select the directory to save SVGs
-  const saveUri = await vscode.window.showOpenDialog({
-    canSelectFolders: true,
-    canSelectFiles: false,
-    openLabel: "Select directory to save SVGs",
-    defaultUri: workspaceFolders[0].uri,
-  });
+	if (!searchUri || searchUri.length === 0) {
+		vscode.window.showWarningMessage("No search directory selected.");
+		return;
+	}
 
-  if (!saveUri || saveUri.length === 0) {
-    vscode.window.showWarningMessage("No save directory selected.");
-    return;
-  }
+	const searchDirectory = searchUri[0];
 
-  const userUrl = await vscode.window.showInputBox({
-    prompt:
-      "Enter the directory to use for the SVG assets in the HTML files. (Empty to use the selected file path)",
-    value: "/assets/svgs/", // default value
-  });
+	// Prompt the user to select the directory to save SVGs
+	const saveUri = await vscode.window.showOpenDialog({
+		canSelectFolders: true,
+		canSelectFiles: false,
+		openLabel: "Select directory to save SVGs",
+		defaultUri: workspaceFolders[0].uri,
+	});
 
-  if (!userUrl) {
-    vscode.window.showInformationMessage(
-      "No URL specified. Using the selected file path."
-    );
-  }
+	if (!saveUri || saveUri.length === 0) {
+		vscode.window.showWarningMessage("No save directory selected.");
+		return;
+	}
 
-  const saveDirectory = saveUri[0];
-  fs.mkdirSync(saveDirectory.fsPath, { recursive: true });
+	const userUrl = await vscode.window.showInputBox({
+		prompt: "Enter the directory to use for the SVG assets in the HTML files. (Empty to use the selected file path)",
+		value: "/assets/svgs/", // default value
+	});
 
-  const htmlFiles = await vscode.workspace.findFiles(
-    new vscode.RelativePattern(searchDirectory, "**/*.html"),
-    "**/node_modules/**"
-  );
+	if (!userUrl) {
+		vscode.window.showInformationMessage("No URL specified. Using the selected file path.");
+	}
 
-  for (const file of htmlFiles) {
-    const document = await vscode.workspace.openTextDocument(file);
-    const text = document.getText();
+	const saveDirectory = saveUri[0];
+	fs.mkdirSync(saveDirectory.fsPath, { recursive: true });
 
-    const svgUrlRegex = /https?:\/\/[^'"\s]+\.svg\b/g;
-    const matches = [...text.matchAll(svgUrlRegex)];
+	const htmlFiles = await vscode.workspace.findFiles(new vscode.RelativePattern(searchDirectory, filePattern), "**/node_modules/**");
 
-    let updatedText = text;
-    for (const match of matches) {
-      const url = match[0];
+	for (const file of htmlFiles) {
+		const document = await vscode.workspace.openTextDocument(file);
+		const text = document.getText();
 
-      // Decode URL-encoded characters
-      let decodedUrl = decodeURIComponent(url);
+		const svgUrlRegex = /https?:\/\/[^'"\s]+\.svg\b/g;
+		const matches = [...text.matchAll(svgUrlRegex)];
 
-      // Remove query parameters
-      decodedUrl = decodedUrl.split("?")[0];
+		let updatedText = text;
+		for (const match of matches) {
+			const url = match[0];
 
-      // Extract and sanitize the filename
-      let filename = path.basename(decodedUrl);
+			// Decode URL-encoded characters
+			let decodedUrl = decodeURIComponent(url);
 
-      // Replace invalid characters with underscores
-      filename = filename.replace(/[<>:"\/\\|?*\s]/g, "_");
+			// Remove query parameters
+			decodedUrl = decodedUrl.split("?")[0];
 
-      const localFilePath = path.join(saveDirectory.fsPath, filename);
+			// Extract and sanitize the filename
+			let filename = path.basename(decodedUrl);
 
-      if (!fs.existsSync(localFilePath)) {
-        await downloadFile(url, localFilePath);
-      }
+			// Replace invalid characters with underscores
+			filename = filename.replace(/[<>:"\/\\|?*\s]/g, "_");
 
-      // Ensure the relative path starts with '/'
-      const relativePath =
-        "/" +
-        path
-          .relative(workspaceFolders[0].uri.fsPath, localFilePath)
-          .replace(/\\/g, "/");
+			const localFilePath = path.join(saveDirectory.fsPath, filename);
 
-      updatedText = updatedText.replace(
-        new RegExp(url.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "g"),
-        userUrl ? userUrl + filename : relativePath
-      );
-    }
+			if (!fs.existsSync(localFilePath)) {
+				await downloadFile(url, localFilePath);
+			}
 
-    if (updatedText !== text) {
-      const edit = new vscode.WorkspaceEdit();
-      const fullRange = new vscode.Range(
-        document.positionAt(0),
-        document.positionAt(text.length)
-      );
-      edit.replace(file, fullRange, updatedText);
-      await vscode.workspace.applyEdit(edit);
-      await document.save();
-    }
-  }
+			// Ensure the relative path starts with '/'
+			const relativePath = "/" + path.relative(workspaceFolders[0].uri.fsPath, localFilePath).replace(/\\/g, "/");
 
-  vscode.window.showInformationMessage(
-    "SVG assets downloaded and references updated."
-  );
+			updatedText = updatedText.replace(new RegExp(url.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"), "g"), userUrl ? userUrl + filename : relativePath);
+		}
+
+		if (updatedText !== text) {
+			const edit = new vscode.WorkspaceEdit();
+			const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(text.length));
+			edit.replace(file, fullRange, updatedText);
+			await vscode.workspace.applyEdit(edit);
+			await document.save();
+		}
+	}
+
+	vscode.window.showInformationMessage("SVG assets downloaded and references updated.");
 }
 
 function downloadFile(url: string, dest: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(dest);
-    https
-      .get(url, (response) => {
-        response.pipe(file);
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
-      })
-      .on("error", (err) => {
-        fs.unlink(dest, () => reject(err));
-      });
-  });
+	return new Promise((resolve, reject) => {
+		const file = fs.createWriteStream(dest);
+		https
+			.get(url, (response) => {
+				response.pipe(file);
+				file.on("finish", () => {
+					file.close();
+					resolve();
+				});
+			})
+			.on("error", (err) => {
+				fs.unlink(dest, () => reject(err));
+			});
+	});
 }

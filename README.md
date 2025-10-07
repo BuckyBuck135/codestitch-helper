@@ -32,6 +32,9 @@ The `CodeLensProvider` adds actionable lenses for common tasks:
 
 The `SectionNavigationProvider` allows users to quickly jump between sections of the document, especially helpful for large files with numerous sections marked by comments or headings.
 
+### 7. Download SVG Assets
+The `codestitchHelper.downloadSvgAssets` command allows the user to download SVG assets and quickly modify the src paths in batch. It can be used from the command palette or the extension sidebar.
+
 ## Installation
 
 1. Open Visual Studio Code.
