@@ -4,6 +4,43 @@ import { promises as fs } from "fs";
 
 let isSharpImagesPluginInstalled: boolean | null = null;
 
+/**
+ * Normalizes any local path to Sharp plugin format (/assets/images/...)
+ * Handles: /src/assets/images/hero.jpg, ../assets/images/hero.jpg, ./assets/images/hero.jpg
+ * Output: /assets/images/hero.jpg
+ */
+function normalizeToSharpPath(imagePath: string, workspaceRoot: string): string {
+  // Remove leading ./ if present
+  let normalizedPath = imagePath.replace(/^\.\//, "");
+
+  // If it's a relative path (../) or absolute path, we need to resolve it
+  if (normalizedPath.startsWith("../") || path.isAbsolute(normalizedPath)) {
+    // For relative paths, we can't resolve without knowing the source file location
+    // So we'll look for the /assets/images/ pattern
+    const assetsMatch = normalizedPath.match(/\/assets\/images\/.+$/);
+    if (assetsMatch) {
+      return assetsMatch[0];
+    }
+  }
+
+  // If path starts with /src/, strip it
+  if (normalizedPath.startsWith("/src/")) {
+    normalizedPath = normalizedPath.substring(4); // Remove "/src"
+  } else if (normalizedPath.startsWith("src/")) {
+    normalizedPath = normalizedPath.substring(3); // Remove "src"
+    if (!normalizedPath.startsWith("/")) {
+      normalizedPath = "/" + normalizedPath;
+    }
+  }
+
+  // Ensure it starts with /
+  if (!normalizedPath.startsWith("/")) {
+    normalizedPath = "/" + normalizedPath;
+  }
+
+  return normalizedPath;
+}
+
 export async function optimizeSharpImages(
   document: vscode.TextDocument,
   range: vscode.Range
@@ -11,17 +48,32 @@ export async function optimizeSharpImages(
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
 
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (!workspaceFolders) {
+    vscode.window.showErrorMessage("No workspace folder is open.");
+    return;
+  }
+
+  const workspaceRoot = workspaceFolders[0].uri.fsPath;
   const text = document.getText(range);
 
   let converted = text;
 
-  // Match each src or srcset individually
+  // Match each src or srcset individually (now including relative paths)
   const regex = /(src|srcset)="([^"]+\.(jpg|JPG|jpeg|png|webp))"/g;
   let match;
   while ((match = regex.exec(text)) !== null) {
     const fullMatch = match[0];
     const attr = match[1];
-    const path = match[2];
+    const imagePath = match[2];
+
+    // Skip if it's a remote URL (shouldn't happen, but safety check)
+    if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+      continue;
+    }
+
+    // Normalize the path to Sharp plugin format
+    const normalizedPath = normalizeToSharpPath(imagePath, workspaceRoot);
 
     // Determine the tag enclosing this src or srcset
     const tagStartIndex = text.lastIndexOf("<", match.index);
@@ -80,8 +132,8 @@ export async function optimizeSharpImages(
     }
     resizeParams += `}`;
 
-    // Construct the replacement for this specific src or srcset
-    const replacement = `${attr}="{% getUrl '${path}' | resize(${resizeParams}) | avif %}"`;
+    // Construct the replacement using normalized path
+    const replacement = `${attr}="{% getUrl '${normalizedPath}' | resize(${resizeParams}) | avif %}"`;
 
     // Replace only this specific instance in the converted text
     converted = converted.replace(fullMatch, replacement);
@@ -144,7 +196,7 @@ async function checkIfSharpImagesPluginInstalled(): Promise<boolean> {
   try {
     const eleventyConfigData = await fs.readFile(eleventyConfigPath, "utf8");
 
-    if (!eleventyConfigData.includes("eleventyPluginSharpImages")) {
+    if (!eleventyConfigData.includes("@codestitchofficial/eleventy-plugin-sharp-images")) {
       return false;
     }
   } catch {

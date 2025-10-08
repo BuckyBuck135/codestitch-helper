@@ -1,11 +1,12 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { calculateNewPicture, urlToVariableName, calculateRelativePath } from "../../utils/astroTransform";
-import { addPictureToFrontmatter, addPlaceholderImageToFrontmatter, addImageImportToFrontmatter } from "../../utils/importLexer";
+import { addPictureToFrontmatter, addImageImportToFrontmatter } from "../../utils/importLexer";
+import { isRemoteImageUrl } from "../../utils/imageDownloader";
 
 interface ImageSourceSelection {
 	srcVariableName: string;
 	imagePath: string;
-	useCustomImage: boolean;
 	altText: string;
 }
 
@@ -29,33 +30,49 @@ function isPositionInNode(position: vscode.Position, node: any, document: vscode
 	return position.isAfterOrEqual(startPos) && position.isBeforeOrEqual(endPos);
 }
 
-async function promptForImageSource(document: vscode.TextDocument): Promise<ImageSourceSelection> {
-	const choice = await vscode.window.showQuickPick([
-		{
-			label: "$(file-media) Choose image from assets folder",
-			description: "Pick your actual image now",
-			action: "pick"
-		},
-		{
-			label: "$(circle-slash) Use placeholder for now",
-			description: "I'll set the image later",
-			action: "placeholder"
-		}
-	], {
-		placeHolder: "Select image source for Picture component"
-	});
+/**
+ * Extracts local image path from a picture tag if it exists
+ * Returns null if the image is still remote
+ */
+function extractLocalImagePath(document: vscode.TextDocument, range: vscode.Range): string | null {
+	const text = document.getText(range);
 
-	const defaultSelection: ImageSourceSelection = {
-		srcVariableName: "placeholderImage",
-		imagePath: "../assets/images/placeholder-image.png",
-		useCustomImage: false,
-		altText: ""
-	};
-
-	if (choice?.action !== "pick") {
-		return defaultSelection;
+	// Check for Astro imported image syntax: {variableName.src}
+	const astroImportMatch = text.match(/(?:src|srcset)=\{([^}]+)\.src\}/i);
+	if (astroImportMatch) {
+		// Already using imported image syntax, return marker
+		return "ASTRO_IMPORTED";
 	}
 
+	// Look for src or srcset with local paths (not http:// or https://)
+	const srcMatch = text.match(/(?:src|srcset)=["']([^"']+)["']/i);
+
+	if (srcMatch) {
+		const imagePath = srcMatch[1];
+
+		// Check if it's a local path (not remote URL)
+		if (!isRemoteImageUrl(imagePath)) {
+			return imagePath;
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Prompts user for alt text only (no image selection)
+ */
+async function promptForAltTextOnly(): Promise<string> {
+	const altText = await vscode.window.showInputBox({
+		prompt: "Enter alt text for the image (optional)",
+		placeHolder: "Descriptive text for accessibility",
+		value: "",
+	});
+
+	return altText ?? "";
+}
+
+async function promptForImageSource(document: vscode.TextDocument): Promise<ImageSourceSelection | null> {
 	const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
 	const defaultUri = workspaceFolder
 		? vscode.Uri.joinPath(workspaceFolder.uri, "src/assets/images")
@@ -69,7 +86,7 @@ async function promptForImageSource(document: vscode.TextDocument): Promise<Imag
 	});
 
 	if (!imageUri || !imageUri[0]) {
-		return defaultSelection;
+		return null;
 	}
 
 	const userAltText = await vscode.window.showInputBox({
@@ -81,7 +98,6 @@ async function promptForImageSource(document: vscode.TextDocument): Promise<Imag
 	return {
 		srcVariableName: urlToVariableName(imageUri[0].fsPath),
 		imagePath: calculateRelativePath(document.uri.fsPath, imageUri[0].fsPath),
-		useCustomImage: true,
 		altText: userAltText ?? ""
 	};
 }
@@ -89,25 +105,20 @@ async function promptForImageSource(document: vscode.TextDocument): Promise<Imag
 async function updateFrontmatterWithImports(
 	frontmatterNode: any,
 	result: any,
-	useCustomImage: boolean,
 	srcVariableName: string,
 	imagePath: string
 ): Promise<void> {
 	if (frontmatterNode) {
 		let updatedValue = await addPictureToFrontmatter(frontmatterNode.value);
-		if (useCustomImage) {
+		// Only add image import if imagePath is provided (not empty)
+		if (imagePath) {
 			updatedValue = await addImageImportToFrontmatter(updatedValue, srcVariableName, imagePath);
-		} else {
-			updatedValue = await addPlaceholderImageToFrontmatter(updatedValue);
 		}
 		frontmatterNode.value = updatedValue;
 	} else {
-		let importStatements = '\nimport { Picture } from "astro:assets";\n';
-		if (useCustomImage) {
-			importStatements += `import ${srcVariableName} from "${imagePath}";\n`;
-		} else {
-			importStatements += 'import placeholderImage from "../assets/images/placeholder-image.png";\n';
-		}
+		// Only create image import if imagePath is provided
+		const imageImport = imagePath ? `import ${srcVariableName} from "${imagePath}";\n` : '';
+		const importStatements = `\nimport { Picture } from "astro:assets";\n${imageImport}`;
 
 		const newFrontmatter = {
 			type: "frontmatter" as const,
@@ -129,7 +140,53 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 	}
 
 	try {
-		const { srcVariableName, imagePath, useCustomImage, altText } = await promptForImageSource(document);
+		// Check if picture already has a local image path
+		const existingLocalPath = extractLocalImagePath(document, range);
+
+		let srcVariableName: string;
+		let imagePath: string;
+		let altText: string;
+
+		if (existingLocalPath === "ASTRO_IMPORTED") {
+			// Picture already has imported image syntax (from "Choose Local" or "Download Remote")
+			// Extract the variable name from the existing syntax and just prompt for alt text
+			const text = document.getText(range);
+			const astroImportMatch = text.match(/\{([^}]+)\.src\}/i);
+
+			if (!astroImportMatch) {
+				vscode.window.showErrorMessage("Could not extract variable name from imported image syntax.");
+				return;
+			}
+
+			srcVariableName = astroImportMatch[1];
+			altText = await promptForAltTextOnly();
+
+			// We don't need imagePath since the import already exists
+			imagePath = ""; // Will skip adding import later
+		} else if (existingLocalPath) {
+			// Picture has local path but not imported yet (shouldn't happen with new flow, but handle it)
+			// Just prompt for alt text and use existing path
+			altText = await promptForAltTextOnly();
+
+			// Convert relative path to absolute for processing
+			const documentDir = path.dirname(document.uri.fsPath);
+			const absolutePath = path.resolve(documentDir, existingLocalPath);
+
+			srcVariableName = urlToVariableName(absolutePath);
+			imagePath = existingLocalPath; // Keep as relative path for import
+		} else {
+			// Picture still has remote URL, use full prompt
+			const result = await promptForImageSource(document);
+
+			if (!result) {
+				vscode.window.showInformationMessage("Image selection cancelled.");
+				return;
+			}
+
+			srcVariableName = result.srcVariableName;
+			imagePath = result.imagePath;
+			altText = result.altText;
+		}
 
 		const { parse } = await import("@astrojs/compiler");
 		const { serialize, is } = await import("@astrojs/compiler/utils");
@@ -159,7 +216,7 @@ export async function optimizeAstroImages(document: vscode.TextDocument, range: 
 		pictureNode.attributes = newNode.attributes;
 		pictureNode.children = newNode.children;
 
-		await updateFrontmatterWithImports(frontmatterNode, result, useCustomImage, srcVariableName, imagePath);
+		await updateFrontmatterWithImports(frontmatterNode, result, srcVariableName, imagePath);
 
 		const newContent = serialize(result.ast);
 

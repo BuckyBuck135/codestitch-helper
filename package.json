@@ -70,12 +70,12 @@
 			},
 			{
 				"command": "codestitchHelper.eleventy.optimizeImages",
-				"title": "Eleventy: Optimize Images",
+				"title": "Eleventy: Optimize with Sharp",
 				"category": "CodeStitch Helper"
 			},
 			{
 				"command": "codestitchHelper.astro.optimizeImages",
-				"title": "Astro: Optimize Images",
+				"title": "Astro: Optimize with <Picture />",
 				"category": "CodeStitch Helper"
 			},
 			{

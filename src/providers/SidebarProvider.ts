@@ -30,6 +30,10 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           vscode.commands.executeCommand("codestitchHelper.downloadSvgAssets");
           break;
         }
+        case "downloadRemoteImages": {
+          vscode.commands.executeCommand("codestitchHelper.downloadRemoteImages");
+          break;
+        }
         case "setProjectType": {
           const newType = data.projectType as "eleventy" | "astro";
           const validation = await this._projectTypeManager.validateProjectType(
@@ -255,6 +259,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           <div class="section">
             <h3>General Actions</h3>
             <div class="framework-actions">
+              <button id="downloadRemoteImages">Download Remote Images</button>
               <button id="downloadSvgAssets">Download SVG Assets</button>
             </div>
           </div>
@@ -271,6 +276,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
                 });
               });
             });
+
+            // Download Remote Images button
+            const downloadImagesBtn = document.getElementById('downloadRemoteImages');
+            if (downloadImagesBtn) {
+              downloadImagesBtn.addEventListener('click', () => {
+                vscode.postMessage({ command: 'downloadRemoteImages' });
+              });
+            }
 
             // Download SVG Assets button
             const downloadBtn = document.getElementById('downloadSvgAssets');

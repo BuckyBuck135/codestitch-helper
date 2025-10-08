@@ -85,9 +85,12 @@ export const addImageImportToFrontmatter = async (value: string, variableName: s
 	const { parse } = await import("es-module-lexer");
 	const [imports] = await parse(value);
 
+	// Check if THIS VARIABLE NAME already exists (not just the path)
 	const hasImport = imports.some((imp) => {
-		const importPath = value.slice(imp.s, imp.e);
-		return importPath === imagePath;
+		const importStatement = value.slice(imp.ss, imp.se);
+		// Check if variable name is already used
+		const match = importStatement.match(/import\s+(\w+)\s+from/);
+		return match && match[1] === variableName;
 	});
 
 	if (hasImport) {

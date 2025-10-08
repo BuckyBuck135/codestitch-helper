@@ -1,5 +1,24 @@
 # Change Log
 
+## 2.1.0
+
+### Image Management & Workflow Improvements
+
+**New Features:**
+- 🖼️ **Download Remote Images** - Batch download all remote images from HTML files and save locally, via the command line, sidebar button or CodeLens
+- 🔄 **Replace with Local Image** - Choose a local image to replace remote image URLs via CodeLens
+
+**Improvements:**
+- 🔧 **Better Path Normalization** - Eleventy Sharp plugin now handles relative and absolute paths correctly
+- 🎯 **Enhanced CodeLens Labels** - "Optimize with Sharp" (Eleventy) and "Optimize with <Picture />" (Astro)
+- 🔍 **Improved Import Detection** - Checks for variable name conflicts in Astro frontmatter imports
+- 📁 **Sidebar Enhancement** - Added "Download Remote Images" button to sidebar
+
+**Bug Fixes:**
+- Fixed Eleventy Sharp Images plugin detection to check for package name instead of import name in the 'Setup Sharp Images Plugin' command
+- Fixed path handling for images with `/src/` prefix in Eleventy projects
+- Fixed duplicate imports when re-optimizing images in Astro
+
 ## 2.0.0
 
 ### MAJOR RELEASE - Framework Separation Architecture for Astro Support

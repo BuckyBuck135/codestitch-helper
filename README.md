@@ -35,6 +35,7 @@ You can manually change the project type anytime via the **CodeStitch Helper** s
 - **Optimize Images** - Convert `<picture>` elements to use Astro's `<Picture>` component
 - **Image Picker UI** - Select images from your assets folder with alt text input
 - **Import Management** - Automatically adds imports to frontmatter
+- **Smart Image Optimization** - Detects if image is already local and only prompts for alt text
 
 ### 🔧 Shared Features (Available in All Projects)
 
@@ -44,15 +45,19 @@ You can manually change the project type anytime via the **CodeStitch Helper** s
 4. **Go to Styling** - Jump directly from HTML section to its CSS definition
 5. **Optimize Stylesheets** - Convert stylesheet links to inline critical CSS
 6. **Download SVG Assets** - Batch download SVG assets from CDN to local files
-7. **Reorder Sections** - Reorganize CSS sections to match HTML structure
-8. **Open in CodeStitch** - Quick link to view components on CodeStitch website
+7. **Download Remote Images** - Batch download all remote images from HTML files and save them locally
+8. **Replace Remote Images** - Choose a local image to replace a remote image URL
+9. **Reorder Sections** - Reorganize CSS sections to match HTML structure
+10. **Open in CodeStitch** - Quick link to view components on CodeStitch website
 
 ### 💡 CodeLens Integration
 
 The extension adds inline action buttons (CodeLenses) above relevant code:
 - `<form>` tags → "Convert to Netlify Form"
 - `<svg>` tags → "Add cs-icon class"
-- `<picture>` tags → "Optimize Images" (framework-aware)
+- `<picture>` tags with remote URLs → "Choose Local Image" or "Download Remote Image"
+- `<picture>` tags with local images → "Optimize with Sharp" (Eleventy) or "Optimize with <Picture />" (Astro)
+- `<img>` tags with remote URLs → "Choose Local Image" or "Download Remote Image"
 - `<div class="cs-ul-wrapper">` → "Make compatible with 11ty" (Eleventy only)
 - `<section id="...">` → "Go to Styling"
 - `<link rel="stylesheet">` → "Optimize Stylesheet"
@@ -73,11 +78,14 @@ Access the CodeStitch Helper sidebar from the Activity Bar:
 
 ### Astro Commands
 - `CodeStitch Helper: Astro: Optimize Images`
+- `CodeStitch Helper: Download Remote Image`
+- `CodeStitch Helper: Replace with Local Image`
 
 ### Shared Commands
 - `CodeStitch Helper: Add cs-icon class to svg`
 - `CodeStitch Helper: Convert Form to Netlify Form with reCAPTCHA`
 - `CodeStitch Helper: Download SVG Assets`
+- `CodeStitch Helper: Download Remote Images`
 - `CodeStitch Helper: Reorder Sections`
 - `CodeStitch Helper: Set Project Type (Eleventy/Astro)`
 
@@ -97,11 +105,17 @@ Access commands via:
 - [X] Button to optimize linking stylesheet
 - [X] Add a button to quickly jump to CSS file / line of a stitch
 - [X] Download all SVG assets from CDN into local files
+- [X] Download all remote images from HTML files
 - [X] Astro support
+- [X] Fixed setupEleventySharpImages - will not install another instance of the plugin if already configured
+- [X] Smart CodeLens buttons for remote vs local images
+- [X] Improved Astro image optimization workflow
+- [X] Better path normalization for Eleventy Sharp plugin
 
 ### Planned 🚧
+- [ ] Fix 'go to styling' for Astro
+- [ ] Optimize `<img>` tags with `<Image />` for Astro
 - [ ] Implement a proper test suite
-- [ ] Find all unoptimized images
 - [ ] Optimization checklist
 - [ ] Convert all emails, phones, and addresses to use {{client}} syntax
 - [ ] Easy re-order of pages using 11ty navigation

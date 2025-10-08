@@ -18,6 +18,9 @@ import { navigateToCodeStitch } from "./commands/shared/navigateToCodeStitch";
 import { reorderSections } from "./commands/shared/reorderSections";
 import { CodeSection } from "./utils/sectionUtils";
 import { downloadSvgAssets } from "./commands/shared/downloadSvgAssets";
+import { downloadImage } from "./commands/shared/downloadImage";
+import { downloadRemoteImages } from "./commands/shared/downloadRemoteImages";
+import { replaceWithLocalImage } from "./commands/shared/replaceWithLocalImage";
 import * as path from "path";
 import * as fs from "fs";
 import { SidebarProvider } from "./providers/sidebarProvider";
@@ -109,6 +112,27 @@ export async function activate(context: vscode.ExtensionContext) {
   const downloadSvgAssetsDisposable = vscode.commands.registerCommand(
     "codestitchHelper.downloadSvgAssets",
     downloadSvgAssets
+  );
+
+  const downloadImageDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.downloadImage",
+    (document: vscode.TextDocument, range: vscode.Range) => {
+      downloadImage(document, range, projectTypeManager);
+    }
+  );
+
+  const downloadRemoteImagesDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.downloadRemoteImages",
+    () => {
+      downloadRemoteImages(projectTypeManager);
+    }
+  );
+
+  const replaceWithLocalImageDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.replaceWithLocalImage",
+    (document: vscode.TextDocument, range: vscode.Range) => {
+      replaceWithLocalImage(document, range, projectTypeManager);
+    }
   );
 
   // Register project type management command
@@ -222,6 +246,9 @@ export async function activate(context: vscode.ExtensionContext) {
     navigateToCodeStitchDisposable,
     reorderSectionsDisposable,
     downloadSvgAssetsDisposable,
+    downloadImageDisposable,
+    downloadRemoteImagesDisposable,
+    replaceWithLocalImageDisposable,
     setProjectTypeDisposable
   );
 
