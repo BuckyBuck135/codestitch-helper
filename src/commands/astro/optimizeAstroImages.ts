@@ -31,31 +31,77 @@ function isPositionInNode(position: vscode.Position, node: any, document: vscode
 }
 
 /**
- * Extracts local image path from a picture tag if it exists
- * Returns null if the image is still remote
+ * Extracts all src/srcset URLs from a picture element
  */
-function extractLocalImagePath(document: vscode.TextDocument, range: vscode.Range): string | null {
-	const text = document.getText(range);
+function extractAllImageUrls(text: string): string[] {
+	const urls: string[] = [];
 
-	// Check for Astro imported image syntax: {variableName.src}
-	const astroImportMatch = text.match(/(?:src|srcset)=\{([^}]+)\.src\}/i);
-	if (astroImportMatch) {
-		// Already using imported image syntax, return marker
-		return "ASTRO_IMPORTED";
-	}
+	// Match all src and srcset attributes
+	const urlPattern = /(?:src|srcset)=(?:\{([^}]+)\.src\}|["']([^"']+)["'])/gi;
+	let match: RegExpExecArray | null;
 
-	// Look for src or srcset with local paths (not http:// or https://)
-	const srcMatch = text.match(/(?:src|srcset)=["']([^"']+)["']/i);
-
-	if (srcMatch) {
-		const imagePath = srcMatch[1];
-
-		// Check if it's a local path (not remote URL)
-		if (!isRemoteImageUrl(imagePath)) {
-			return imagePath;
+	while ((match = urlPattern.exec(text)) !== null) {
+		// match[1] is for Astro syntax {var.src}, match[2] is for regular "url"
+		const url = match[1] ? `{${match[1]}.src}` : match[2];
+		if (url) {
+			urls.push(url);
 		}
 	}
 
+	return urls;
+}
+
+/**
+ * Extracts local image path from a picture tag if it exists
+ * Returns null if ANY image is still remote
+ * Returns "ASTRO_IMPORTED" if ALL images use Astro import syntax
+ * Returns a local path if ALL images are local but not imported
+ */
+function extractLocalImagePath(document: vscode.TextDocument, range: vscode.Range): string | null {
+	const text = document.getText(range);
+	const allUrls = extractAllImageUrls(text);
+
+	if (allUrls.length === 0) {
+		return null;
+	}
+
+	let hasAstroImported = false;
+	let hasLocal = false;
+	let hasRemote = false;
+	let localPath: string | null = null;
+
+	for (const url of allUrls) {
+		if (url.startsWith('{') && url.endsWith('.src}')) {
+			// Astro imported syntax
+			hasAstroImported = true;
+		} else if (isRemoteImageUrl(url)) {
+			// Remote URL
+			hasRemote = true;
+		} else {
+			// Local path
+			hasLocal = true;
+			if (!localPath) {
+				localPath = url;
+			}
+		}
+	}
+
+	// If ANY image is still remote, return null (not ready to optimize)
+	if (hasRemote) {
+		return null;
+	}
+
+	// If ALL images use Astro import syntax
+	if (hasAstroImported && !hasLocal) {
+		return "ASTRO_IMPORTED";
+	}
+
+	// If ALL images are local paths (not imported yet)
+	if (hasLocal && !hasAstroImported) {
+		return localPath;
+	}
+
+	// Mixed state (some imported, some local but not imported) - treat as not ready
 	return null;
 }
 

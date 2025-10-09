@@ -289,19 +289,28 @@ export function findRemoteImageUrls(document: vscode.TextDocument): RemoteImage[
 		const urlMatches = pictureContent.match(/(?:src|srcset)=["'](https?:\/\/[^"']+)["']/gi);
 
 		if (urlMatches && urlMatches.length > 0) {
-			const url = urlMatches[0].match(/https?:\/\/[^"']+/)?.[0];
-			if (url) {
-				const startPos = document.positionAt(match.index);
-				const endPos = document.positionAt(match.index + match[0].length);
-				const range = new vscode.Range(startPos, endPos);
+			// Extract all unique URLs from the picture element
+			const uniqueUrls = new Set<string>();
+			for (const urlMatch of urlMatches) {
+				const url = urlMatch.match(/https?:\/\/[^"']+/)?.[0];
+				if (url) {
+					uniqueUrls.add(url);
+				}
+			}
 
-				// Get context
-				const lineStart = Math.max(0, startPos.line - 1);
-				const lineEnd = Math.min(document.lineCount - 1, endPos.line + 1);
-				const context = document.getText(
-					new vscode.Range(lineStart, 0, lineEnd, Number.MAX_SAFE_INTEGER)
-				);
+			// Create a RemoteImage entry for each unique URL found
+			const startPos = document.positionAt(match.index);
+			const endPos = document.positionAt(match.index + match[0].length);
+			const range = new vscode.Range(startPos, endPos);
 
+			// Get context
+			const lineStart = Math.max(0, startPos.line - 1);
+			const lineEnd = Math.min(document.lineCount - 1, endPos.line + 1);
+			const context = document.getText(
+				new vscode.Range(lineStart, 0, lineEnd, Number.MAX_SAFE_INTEGER)
+			);
+
+			for (const url of uniqueUrls) {
 				remoteImages.push({
 					url,
 					range,

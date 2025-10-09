@@ -22,14 +22,31 @@ export async function replaceWithLocalImage(
 	try {
 		const text = document.getText(range);
 
-		// Extract the remote image URL from the tag
-		const urlMatch = text.match(/(?:src|srcset)=["'](https?:\/\/[^"']+)["']/i);
-		if (!urlMatch) {
-			vscode.window.showErrorMessage("Could not find a remote image URL in the selected element.");
+		// Extract ALL remote image URLs from the tag
+		const urlPattern = /(?:src|srcset)=["'](https?:\/\/[^"']+)["']/gi;
+		const allUrls = new Set<string>();
+		let match: RegExpExecArray | null;
+
+		while ((match = urlPattern.exec(text)) !== null) {
+			const url = match[1];
+			// Check if it's a remote URL
+			try {
+				const urlObj = new URL(url);
+				if (urlObj.protocol === "http:" || urlObj.protocol === "https:") {
+					allUrls.add(url);
+				}
+			} catch {
+				// Not a valid URL, skip
+			}
+		}
+
+		if (allUrls.size === 0) {
+			vscode.window.showErrorMessage("Could not find any remote image URLs in the selected element.");
 			return;
 		}
 
-		const remoteUrl = urlMatch[1];
+		// Convert to array for processing
+		const remoteUrls = Array.from(allUrls);
 
 		// Get workspace root and default images directory
 		const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -41,32 +58,47 @@ export async function replaceWithLocalImage(
 		const workspaceRoot = workspaceFolders[0].uri.fsPath;
 		const projectType = projectTypeManager.getProjectType();
 		const defaultImagesDir = getDefaultImagesDirectory(workspaceRoot, projectType);
-
-		// Show file picker to select local image
-		const imageUri = await vscode.window.showOpenDialog({
-			filters: {
-				Images: ["jpg", "jpeg", "png", "webp", "svg", "avif"],
-			},
-			defaultUri: vscode.Uri.file(defaultImagesDir),
-			canSelectMany: false,
-			openLabel: "Select Image",
-		});
-
-		if (!imageUri || imageUri.length === 0) {
-			vscode.window.showInformationMessage("Image selection cancelled.");
-			return;
-		}
-
-		const selectedImagePath = imageUri[0].fsPath;
 		const documentDir = path.dirname(document.uri.fsPath);
-		const relativePath = getRelativeImportPath(selectedImagePath, documentDir);
-		const filename = path.basename(selectedImagePath);
 
-		if (projectType === "astro") {
-			// Astro: Add import and use image object syntax
+		// Map of remote URL to local image info
+		const urlReplacements = new Map<string, { localPath: string; variableName: string; relativePath: string }>();
+
+		// Prompt user to select a local image for each unique remote URL
+		for (let i = 0; i < remoteUrls.length; i++) {
+			const remoteUrl = remoteUrls[i];
+			const urlFilename = path.basename(new URL(remoteUrl).pathname);
+			const progress = remoteUrls.length > 1 ? ` (${i + 1} of ${remoteUrls.length})` : '';
+
+			// Show file picker to select local image for this URL
+			const imageUri = await vscode.window.showOpenDialog({
+				filters: {
+					Images: ["jpg", "jpeg", "png", "webp", "svg", "avif"],
+				},
+				defaultUri: vscode.Uri.file(defaultImagesDir),
+				canSelectMany: false,
+				openLabel: "Select Image",
+				title: `Select local image for: ${urlFilename}${progress}`,
+			});
+
+			if (!imageUri || imageUri.length === 0) {
+				vscode.window.showInformationMessage("Image selection cancelled.");
+				return;
+			}
+
+			const selectedImagePath = imageUri[0].fsPath;
+			const relativePath = getRelativeImportPath(selectedImagePath, documentDir);
 			const variableName = urlToVariableName(selectedImagePath);
 
-			// Parse Astro document
+			urlReplacements.set(remoteUrl, {
+				localPath: selectedImagePath,
+				variableName,
+				relativePath,
+			});
+		}
+
+		// Update document with all replacements
+		if (projectType === "astro") {
+			// Astro: Add imports and use image object syntax
 			const { parse } = await import("@astrojs/compiler");
 			const { serialize, is } = await import("@astrojs/compiler/utils");
 
@@ -82,34 +114,39 @@ export async function replaceWithLocalImage(
 				}
 			}
 
-			if (frontmatterNode) {
-				// Add import to existing frontmatter
-				frontmatterNode.value = await addImageImportToFrontmatter(
-					frontmatterNode.value,
-					variableName,
-					relativePath
-				);
-			} else {
-				// Create new frontmatter with import
-				const newFrontmatter = {
-					type: "frontmatter" as const,
-					value: `\nimport ${variableName} from "${relativePath}";\n`,
-					position: {
-						start: { line: 1, column: 1, offset: 0 },
-						end: { line: 1, column: 1, offset: 0 },
-					},
-				};
-				result.ast.children.unshift(newFrontmatter as any);
+			// Add all imports
+			for (const [url, info] of urlReplacements) {
+				if (frontmatterNode) {
+					frontmatterNode.value = await addImageImportToFrontmatter(
+						frontmatterNode.value,
+						info.variableName,
+						info.relativePath
+					);
+				} else {
+					// Create new frontmatter with first import
+					const newFrontmatter = {
+						type: "frontmatter" as const,
+						value: `\nimport ${info.variableName} from "${info.relativePath}";\n`,
+						position: {
+							start: { line: 1, column: 1, offset: 0 },
+							end: { line: 1, column: 1, offset: 0 },
+						},
+					};
+					result.ast.children.unshift(newFrontmatter as any);
+					frontmatterNode = newFrontmatter; // Use this for subsequent imports
+				}
 			}
 
 			// Replace remote URLs with {variableName.src} in the HTML
 			let newContent = serialize(result.ast);
 
-			// Replace all occurrences of remote URL with {variableName.src}
-			newContent = newContent.replace(
-				new RegExp(`((?:src|srcset)=)["']${remoteUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}["']`, "gi"),
-				`$1{${variableName}.src}`
-			);
+			for (const [url, info] of urlReplacements) {
+				const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+				newContent = newContent.replace(
+					new RegExp(`((?:src|srcset)=)["']${escapedUrl}["']`, "gi"),
+					`$1{${info.variableName}.src}`
+				);
+			}
 
 			// Replace entire document
 			await editor.edit((editBuilder) => {
@@ -120,21 +157,26 @@ export async function replaceWithLocalImage(
 				editBuilder.replace(fullRange, newContent);
 			});
 		} else {
-			// Eleventy: Just replace with relative path
+			// Eleventy: Replace with relative paths
 			let updatedText = text;
 
-			// Replace all occurrences of the remote URL
-			updatedText = updatedText.replace(
-				new RegExp(remoteUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"),
-				relativePath
-			);
+			for (const [url, info] of urlReplacements) {
+				const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+				updatedText = updatedText.replace(
+					new RegExp(escapedUrl, "g"),
+					info.relativePath
+				);
+			}
 
 			await editor.edit((editBuilder) => {
 				editBuilder.replace(range, updatedText);
 			});
 		}
 
-		vscode.window.showInformationMessage(`✓ Image replaced: ${filename}`);
+		const replaceMessage = remoteUrls.length > 1
+			? `✓ Replaced ${remoteUrls.length} images`
+			: `✓ Image replaced: ${path.basename(urlReplacements.values().next().value.localPath)}`;
+		vscode.window.showInformationMessage(replaceMessage);
 	} catch (error) {
 		vscode.window.showErrorMessage(
 			`Failed to replace image: ${error instanceof Error ? error.message : String(error)}`
