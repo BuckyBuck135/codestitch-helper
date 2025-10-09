@@ -3,7 +3,7 @@ import { excludedDirectories } from "./constants";
 
 export async function findAllStyleFiles() {
   let files = [];
-  const patterns = ["**/*.scss", "**/*.less", "**/*.css"];
+  const patterns = ["**/*.scss", "**/*.less", "**/*.css", "**/*.astro"];
   const excludePatterns = excludedDirectories.map((dir) => `**/${dir}/**`);
   const excludePattern = `{${excludePatterns.join(",")}}`;
 
