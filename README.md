@@ -52,15 +52,22 @@ You can manually change the project type anytime via the **CodeStitch Helper** s
 
 ### 💡 CodeLens Integration
 
-The extension adds inline action buttons (CodeLenses) above relevant code:
-- `<form>` tags → "Convert to Netlify Form"
-- `<svg>` tags → "Add cs-icon class"
-- `<picture>` tags with remote URLs → "Choose Local Image" or "Download Remote Image"
-- `<picture>` tags with local images → "Optimize with Sharp" (Eleventy) or "Optimize with <Picture />" (Astro)
-- `<img>` tags with remote URLs → "Choose Local Image" or "Download Remote Image"
-- `<div class="cs-ul-wrapper">` → "Make compatible with 11ty" (Eleventy only)
-- `<section id="...">` → "Go to Styling"
-- `<link rel="stylesheet">` → "Optimize Stylesheet"
+The extension adds context-aware inline action buttons above relevant code elements. Click these buttons to quickly perform common tasks without opening the command palette:
+
+**Forms & SVGs:**
+- `<form>` tags → **"Convert to Netlify Form"**
+- `<svg>` tags (without cs-icon class) → **"Add cs-icon class"**
+
+**Images & Pictures:**
+- `<picture>` or `<img>` tags with **remote URLs** → **"Choose Local Image"** | **"Download Remote Image"**
+- `<picture>` tags with **local images** → **"Optimize with Sharp"** (Eleventy) or **"Optimize with <Picture />"** (Astro)
+- `<img>` tags with **remote SVGs** → **"Optimize with <Icon />"** (Astro only)
+
+**Navigation & Structure:**
+- `<div class="cs-ul-wrapper">` → **"Make compatible with 11ty"** (Eleventy only)
+- `<section id="...">` → **"Go to Styling"** | **"Open in CodeStitch"**
+- `<link rel="stylesheet">` → **"Optimize Stylesheet"**
+
 
 ### 🎨 Enhanced Sidebar
 
@@ -111,9 +118,11 @@ Access commands via:
 - [X] Smart CodeLens buttons for remote vs local images
 - [X] Improved Astro image optimization workflow
 - [X] Better path normalization for Eleventy Sharp plugin
+- [X] Fix 'go to styling' for Astro
+- [X] Add support for transforming SVGs into `<Icon />` with astro-icon
 
 ### Planned 🚧
-- [ ] Fix 'go to styling' for Astro
+- [ ] Review consistent UX between frameworks
 - [ ] Optimize `<img>` tags with `<Image />` for Astro
 - [ ] Implement a proper test suite
 - [ ] Optimization checklist
@@ -123,7 +132,6 @@ Access commands via:
 - [ ] Remove dark mode command
 - [ ] Purge styles when HTML is modified (e.g., removing a button)
 - [ ] Make list items dynamic using 11ty
-- [ ] Add support for transforming SVGs into `<Icon />` with astro-icon
 - [ ] Fix `optimise stylesheet` for Astro
 
 ## 🐛 Issues & Feedback
