@@ -14,6 +14,7 @@ export interface DownloadResult {
 	success: boolean;
 	localPath?: string;
 	error?: string;
+	skipped?: boolean;
 }
 
 export interface RemoteImage {
@@ -51,9 +52,13 @@ export async function downloadRemoteImage(
 		const safeFilename = sanitizeFilename(`${baseFilename}${extension}`);
 		let localPath = path.join(imageDir, safeFilename);
 
-		// Handle filename conflicts
+		// Skip download if file already exists (unless overwrite is true)
 		if (fs.existsSync(localPath) && !options.overwrite) {
-			localPath = getUniqueFilePath(imageDir, safeFilename);
+			return {
+				success: true,
+				localPath,
+				skipped: true,
+			};
 		}
 
 		// Download the image
@@ -62,6 +67,7 @@ export async function downloadRemoteImage(
 		return {
 			success: true,
 			localPath,
+			skipped: false,
 		};
 	} catch (error) {
 		return {
@@ -307,6 +313,43 @@ export function findRemoteImageUrls(document: vscode.TextDocument): RemoteImage[
 	}
 
 	return remoteImages;
+}
+
+/**
+ * Finds all remote SVG URLs in a document
+ * @param document - The VSCode document to scan
+ * @returns Array of remote SVGs found
+ */
+export function findRemoteSvgUrls(document: vscode.TextDocument): RemoteImage[] {
+	const text = document.getText();
+	const remoteSvgs: RemoteImage[] = [];
+
+	// Pattern for any SVG URLs (in img tags, inline, etc.)
+	const svgPattern = /https?:\/\/[^'"\s]+\.svg\b/gi;
+	let match: RegExpExecArray | null;
+
+	while ((match = svgPattern.exec(text)) !== null) {
+		const url = match[0];
+		const startPos = document.positionAt(match.index);
+		const endPos = document.positionAt(match.index + match[0].length);
+		const range = new vscode.Range(startPos, endPos);
+
+		// Get context (surrounding lines)
+		const lineStart = Math.max(0, startPos.line - 1);
+		const lineEnd = Math.min(document.lineCount - 1, endPos.line + 1);
+		const context = document.getText(
+			new vscode.Range(lineStart, 0, lineEnd, Number.MAX_SAFE_INTEGER)
+		);
+
+		remoteSvgs.push({
+			url,
+			range,
+			tagType: "img", // Most SVGs will be in img tags
+			context: context.trim(),
+		});
+	}
+
+	return remoteSvgs;
 }
 
 /**

@@ -167,7 +167,7 @@ export async function downloadRemoteImages(projectTypeManager: ProjectTypeManage
 
 		const saveDirectory = saveUri[0].fsPath;
 
-		// Download remote images and update references
+		// Download remote images (without modifying HTML)
 		const results = await vscode.window.withProgress(
 			{
 				location: vscode.ProgressLocation.Notification,
@@ -178,11 +178,11 @@ export async function downloadRemoteImages(projectTypeManager: ProjectTypeManage
 				const downloadResults: {
 					success: number;
 					failed: number;
-					filesUpdated: Set<string>;
+					skipped: number;
 				} = {
 					success: 0,
 					failed: 0,
-					filesUpdated: new Set(),
+					skipped: 0,
 				};
 
 				for (let i = 0; i < selectedImages.length; i++) {
@@ -201,30 +201,11 @@ export async function downloadRemoteImages(projectTypeManager: ProjectTypeManage
 							continue;
 						}
 
-						// Update all files that reference this URL
-						for (const [url, { document }] of allRemoteImages.entries()) {
-							if (url === selection.url) {
-								const text = document.getText();
-
-								// Calculate relative path from document to downloaded image
-								const documentDir = path.dirname(document.uri.fsPath);
-								const relativePath = getRelativeImportPath(result.localPath, documentDir);
-
-								// Replace URL with relative path
-								const updatedText = text.replace(new RegExp(selection.url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), relativePath);
-
-								if (updatedText !== text) {
-									const edit = new vscode.WorkspaceEdit();
-									const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(text.length));
-									edit.replace(document.uri, fullRange, updatedText);
-									await vscode.workspace.applyEdit(edit);
-									await document.save();
-									downloadResults.filesUpdated.add(document.uri.fsPath);
-								}
-							}
+						if (result.skipped) {
+							downloadResults.skipped++;
+						} else {
+							downloadResults.success++;
 						}
-
-						downloadResults.success++;
 					} catch (error) {
 						console.error(`Failed to download ${selection.url}:`, error);
 						downloadResults.failed++;
@@ -236,7 +217,11 @@ export async function downloadRemoteImages(projectTypeManager: ProjectTypeManage
 		);
 
 		// Show summary
-		const summary = [`✓ ${results.success} image(s) downloaded`, results.failed > 0 ? `✗ ${results.failed} failed` : null, `📝 ${results.filesUpdated.size} file(s) updated`].filter(Boolean).join(" | ");
+		const summary = [
+			results.success > 0 ? `✓ ${results.success} downloaded` : null,
+			results.skipped > 0 ? `⊘ ${results.skipped} skipped (already exist)` : null,
+			results.failed > 0 ? `✗ ${results.failed} failed` : null
+		].filter(Boolean).join(" | ");
 
 		vscode.window.showInformationMessage(summary);
 	} catch (error) {

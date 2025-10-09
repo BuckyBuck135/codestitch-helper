@@ -167,12 +167,17 @@ export async function downloadImage(document: vscode.TextDocument, range: vscode
 				return {
 					localPath: result.localPath,
 					filename: path.basename(result.localPath),
+					skipped: result.skipped || false,
 				};
 			}
 		);
 
 		// Show success notification
-		vscode.window.showInformationMessage(`✓ Download complete: ${downloadResult.filename}`);
+		if (downloadResult.skipped) {
+			vscode.window.showInformationMessage(`✓ Using existing file: ${downloadResult.filename}`);
+		} else {
+			vscode.window.showInformationMessage(`✓ Download complete: ${downloadResult.filename}`);
+		}
 	} catch (error) {
 		vscode.window.showErrorMessage(`Failed to download remote image: ${error instanceof Error ? error.message : String(error)}`);
 	}
