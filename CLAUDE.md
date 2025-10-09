@@ -61,4 +61,5 @@ CodeStitch Helper is a VSCode extension that provides utilities for web develope
 - All files use camelCase naming convention
 
 ## Testing Extension
+Compile `tsc -p ./` after every change before
 Use F5 in VSCode to launch Extension Development Host for testing changes.
