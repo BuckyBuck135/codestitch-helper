@@ -8,6 +8,7 @@ import { addIconClass } from "./commands/shared/addIconClass";
 import { convertToNetlifyForm } from "./commands/shared/convertToNetlifyForm";
 import { optimizeSharpImages } from "./commands/eleventy/optimizeSharpImages";
 import { optimizeAstroImages } from "./commands/astro/optimizeAstroImages";
+import { transformSvgToIcon } from "./commands/astro/transformSvgToIcon";
 import {
   navigateToSectionCSS,
   navigateToSectionCSSCommandId,
@@ -17,7 +18,7 @@ import { optimizeStylesheet } from "./commands/shared/optimizeStylesheet";
 import { navigateToCodeStitch } from "./commands/shared/navigateToCodeStitch";
 import { reorderSections } from "./commands/shared/reorderSections";
 import { CodeSection } from "./utils/sectionUtils";
-import { downloadSvgAssets } from "./commands/shared/downloadSvgAssets";
+import { downloadRemoteSvgs } from "./commands/shared/downloadRemoteSvgs";
 import { downloadImage } from "./commands/shared/downloadImage";
 import { downloadRemoteImages } from "./commands/shared/downloadRemoteImages";
 import { replaceWithLocalImage } from "./commands/shared/replaceWithLocalImage";
@@ -109,9 +110,11 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  const downloadSvgAssetsDisposable = vscode.commands.registerCommand(
-    "codestitchHelper.downloadSvgAssets",
-    downloadSvgAssets
+  const downloadRemoteSvgsDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.downloadRemoteSvgs",
+    () => {
+      downloadRemoteSvgs(projectTypeManager);
+    }
   );
 
   const downloadImageDisposable = vscode.commands.registerCommand(
@@ -193,7 +196,17 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     );
 
-    context.subscriptions.push(optimizeAstroImagesDisposable);
+    const transformSvgToIconDisposable = vscode.commands.registerCommand(
+      "codestitchHelper.astro.transformSvgToIcon",
+      (document: vscode.TextDocument, range: vscode.Range) => {
+        transformSvgToIcon(document, range);
+      }
+    );
+
+    context.subscriptions.push(
+      optimizeAstroImagesDisposable,
+      transformSvgToIconDisposable
+    );
   }
 
   // Ensure the Explorer view is open
@@ -245,7 +258,7 @@ export async function activate(context: vscode.ExtensionContext) {
     optimizeStylesheetDisposable,
     navigateToCodeStitchDisposable,
     reorderSectionsDisposable,
-    downloadSvgAssetsDisposable,
+    downloadRemoteSvgsDisposable,
     downloadImageDisposable,
     downloadRemoteImagesDisposable,
     replaceWithLocalImageDisposable,

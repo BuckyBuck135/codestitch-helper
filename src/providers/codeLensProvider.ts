@@ -115,8 +115,8 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
 			}
 		}
 
-		// Regex to find <img> tags with remote URLs
-		const imgPattern = /<img[^>]+src=["'](https?:\/\/[^"']+)["'][^>]*>/gi;
+		// Regex to find <img> tags with remote raster image URLs (exclude SVGs)
+		const imgPattern = /<img[^>]+src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|webp|avif)[^"']*)["'][^>]*>/gi;
 		while ((match = imgPattern.exec(text)) !== null) {
 			const startPosition = document.positionAt(match.index);
 			const endPosition = document.positionAt(match.index + match[0].length);
@@ -137,6 +137,24 @@ export class CodeLensProvider implements vscode.CodeLensProvider {
 					arguments: [document, range],
 				})
 			);
+		}
+
+		// Regex to find <img> tags with remote SVG URLs (Astro only)
+		if (this.projectTypeManager.isAstro()) {
+			const svgImgPattern = /<img[^>]+src=["'](https?:\/\/[^"']+\.svg[^"']*)["'][^>]*>/gi;
+			while ((match = svgImgPattern.exec(text)) !== null) {
+				const startPosition = document.positionAt(match.index);
+				const endPosition = document.positionAt(match.index + match[0].length);
+				const range = new vscode.Range(startPosition, endPosition);
+
+				codeLenses.push(
+					new vscode.CodeLens(range, {
+						title: "Optimize with <Icon />",
+						command: "codestitchHelper.astro.transformSvgToIcon",
+						arguments: [document, range],
+					})
+				);
+			}
 		}
 
 		// Regex to find <section> tags with an id attribute

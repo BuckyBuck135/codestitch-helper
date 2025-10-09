@@ -79,6 +79,11 @@
 				"category": "CodeStitch Helper"
 			},
 			{
+				"command": "codestitchHelper.astro.transformSvgToIcon",
+				"title": "Astro: Convert SVG to <Icon />",
+				"category": "CodeStitch Helper"
+			},
+			{
 				"command": "codestitchHelper.openSection",
 				"title": "Open CodeStitch Sections Navigator"
 			},
@@ -100,8 +105,8 @@
 				"category": "CodeStitch Helper"
 			},
 			{
-				"command": "codestitchHelper.downloadSvgAssets",
-				"title": "Download SVG Assets",
+				"command": "codestitchHelper.downloadRemoteSvgs",
+				"title": "Download Remote SVGs",
 				"category": "CodeStitch Helper"
 			},
 			{

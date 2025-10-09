@@ -26,8 +26,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.command) {
-        case "downloadSvgAssets": {
-          vscode.commands.executeCommand("codestitchHelper.downloadSvgAssets");
+        case "downloadRemoteSvgs": {
+          vscode.commands.executeCommand("codestitchHelper.downloadRemoteSvgs");
           break;
         }
         case "downloadRemoteImages": {
@@ -260,7 +260,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             <h3>General Actions</h3>
             <div class="framework-actions">
               <button id="downloadRemoteImages">Download Remote Images</button>
-              <button id="downloadSvgAssets">Download SVG Assets</button>
+              <button id="downloadRemoteSvgs">Download Remote SVGs</button>
             </div>
           </div>
 
@@ -285,11 +285,11 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
               });
             }
 
-            // Download SVG Assets button
-            const downloadBtn = document.getElementById('downloadSvgAssets');
-            if (downloadBtn) {
-              downloadBtn.addEventListener('click', () => {
-                vscode.postMessage({ command: 'downloadSvgAssets' });
+            // Download Remote SVGs button
+            const downloadSvgsBtn = document.getElementById('downloadRemoteSvgs');
+            if (downloadSvgsBtn) {
+              downloadSvgsBtn.addEventListener('click', () => {
+                vscode.postMessage({ command: 'downloadRemoteSvgs' });
               });
             }
 

@@ -100,3 +100,16 @@ export const addImageImportToFrontmatter = async (value: string, variableName: s
 	const importStatement = `import ${variableName} from "${imagePath}";`;
 	return insertImportAfterLast(value, imports, importStatement);
 };
+
+export const addIconToFrontmatter = async (value: string) => {
+	const { parse } = await import("es-module-lexer");
+	const [imports] = await parse(value);
+	const importsIcon = imports.find((imp) => imp.n === "astro-icon/components");
+
+	if (!importsIcon) {
+		const trimmedValue = value.trimStart();
+		return `\nimport { Icon } from "astro-icon/components";\n${trimmedValue}`;
+	}
+
+	return insertIntoImport(value, importsIcon, "Icon");
+};
