@@ -2,101 +2,81 @@ import * as vscode from "vscode";
 import { ProjectTypeManager } from "../services/projectTypeManager";
 
 export class SidebarProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "codestitchHelper";
-  private _view?: vscode.WebviewView;
+	public static readonly viewType = "codestitchHelper";
+	private _view?: vscode.WebviewView;
 
-  constructor(
-    private readonly _extensionUri: vscode.Uri,
-    private readonly _projectTypeManager: ProjectTypeManager
-  ) {}
+	constructor(private readonly _extensionUri: vscode.Uri, private readonly _projectTypeManager: ProjectTypeManager) {}
 
-  public resolveWebviewView(
-    webviewView: vscode.WebviewView,
-    context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken
-  ) {
-    this._view = webviewView;
+	public resolveWebviewView(webviewView: vscode.WebviewView, context: vscode.WebviewViewResolveContext, _token: vscode.CancellationToken) {
+		this._view = webviewView;
 
-    webviewView.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [this._extensionUri],
-    };
+		webviewView.webview.options = {
+			enableScripts: true,
+			localResourceRoots: [this._extensionUri],
+		};
 
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+		webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
 
-    webviewView.webview.onDidReceiveMessage(async (data) => {
-      switch (data.command) {
-        case "downloadRemoteSvgs": {
-          vscode.commands.executeCommand("codestitchHelper.downloadRemoteSvgs");
-          break;
-        }
-        case "downloadRemoteImages": {
-          vscode.commands.executeCommand("codestitchHelper.downloadRemoteImages");
-          break;
-        }
-        case "setProjectType": {
-          const newType = data.projectType as "eleventy" | "astro";
-          const validation = await this._projectTypeManager.validateProjectType(
-            newType
-          );
+		webviewView.webview.onDidReceiveMessage(async (data) => {
+			switch (data.command) {
+				case "downloadRemoteSvgs": {
+					vscode.commands.executeCommand("codestitchHelper.downloadRemoteSvgs");
+					break;
+				}
+				case "downloadRemoteImages": {
+					vscode.commands.executeCommand("codestitchHelper.downloadRemoteImages");
+					break;
+				}
+				case "setProjectType": {
+					const newType = data.projectType as "eleventy" | "astro";
+					const validation = await this._projectTypeManager.validateProjectType(newType);
 
-          if (!validation.matches && validation.detected !== "unknown") {
-            // Detected project type doesn't match the requested type
-            const detectedName =
-              validation.detected === "eleventy" ? "Eleventy" : "Astro";
-            const requestedName = newType === "eleventy" ? "Eleventy" : "Astro";
+					if (!validation.matches && validation.detected !== "unknown") {
+						// Detected project type doesn't match the requested type
+						const detectedName = validation.detected === "eleventy" ? "Eleventy" : "Astro";
+						const requestedName = newType === "eleventy" ? "Eleventy" : "Astro";
 
-            const choice = await vscode.window.showWarningMessage(
-              `⚠️ This appears to be an ${detectedName} project, but you're trying to set it as ${requestedName}. Are you sure?`,
-              {
-                modal: true,
-                detail: `We detected ${detectedName} configuration files or dependencies in your workspace. Using the wrong project type may cause commands to fail or behave unexpectedly.`,
-              },
-              "Yes, Override"
-            );
+						const choice = await vscode.window.showWarningMessage(
+							`⚠️ This appears to be an ${detectedName} project, but you're trying to set it as ${requestedName}. Are you sure?`,
+							{
+								modal: true,
+								detail: `We detected ${detectedName} configuration files or dependencies in your workspace. Using the wrong project type may cause commands to fail or behave unexpectedly.`,
+							},
+							"Yes, Override"
+						);
 
-            if (choice !== "Yes, Override") {
-              // User cancelled, refresh the webview to reset the radio button
-              if (this._view) {
-                this._view.webview.html = this._getHtmlForWebview(
-                  this._view.webview
-                );
-              }
-              break;
-            }
-          }
+						if (choice !== "Yes, Override") {
+							// User cancelled, refresh the webview to reset the radio button
+							if (this._view) {
+								this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+							}
+							break;
+						}
+					}
 
-          await this._projectTypeManager.setProjectType(newType);
-          vscode.window
-            .showInformationMessage(
-              `Project type changed to ${newType === "eleventy" ? "Eleventy" : "Astro"}. Extension reload required.`,
-              "Reload Now",
-              "Later"
-            )
-            .then((selection) => {
-              if (selection === "Reload Now") {
-                vscode.commands.executeCommand("workbench.action.reloadWindow");
-              }
-            });
-          break;
-        }
-        case "setupSharpImages": {
-          vscode.commands.executeCommand(
-            "codestitchHelper.eleventy.setupSharpImages"
-          );
-          break;
-        }
-      }
-    });
-  }
+					await this._projectTypeManager.setProjectType(newType);
+					vscode.window.showInformationMessage(`Project type changed to ${newType === "eleventy" ? "Eleventy" : "Astro"}. Extension reload required.`, "Reload Now", "Later").then((selection) => {
+						if (selection === "Reload Now") {
+							vscode.commands.executeCommand("workbench.action.reloadWindow");
+						}
+					});
+					break;
+				}
+				case "setupSharpImages": {
+					vscode.commands.executeCommand("codestitchHelper.eleventy.setupSharpImages");
+					break;
+				}
+			}
+		});
+	}
 
-  private _getHtmlForWebview(webview: vscode.Webview) {
-    const projectType = this._projectTypeManager.getProjectType();
-    const isEleventy = projectType === "eleventy";
-    const isAstro = projectType === "astro";
-    const isUnknown = projectType === "unknown";
+	private _getHtmlForWebview(webview: vscode.Webview) {
+		const projectType = this._projectTypeManager.getProjectType();
+		const isEleventy = projectType === "eleventy";
+		const isAstro = projectType === "astro";
+		const isUnknown = projectType === "unknown";
 
-    return `
+		return `
       <!DOCTYPE html>
       <html lang="en">
         <head>
@@ -229,8 +209,8 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
           </div>
 
           ${
-            isEleventy
-              ? `
+						isEleventy
+							? `
           <div class="section">
             <h3>Eleventy Actions</h3>
             <div class="framework-actions">
@@ -238,12 +218,12 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             </div>
           </div>
           `
-              : ""
-          }
+							: ""
+					}
 
           ${
-            isAstro
-              ? `
+						isAstro
+							? `
           <div class="section">
             <h3>Astro Actions</h3>
             <div class="framework-actions">
@@ -253,14 +233,14 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
             </div>
           </div>
           `
-              : ""
-          }
+							: ""
+					}
 
           <div class="section">
             <h3>General Actions</h3>
             <div class="framework-actions">
-              <button id="downloadRemoteImages">Download Remote Images</button>
-              <button id="downloadRemoteSvgs">Download Remote SVGs</button>
+              <button id="downloadRemoteImages">Batch Download Remote Images</button>
+              <button id="downloadRemoteSvgs">Batch Download Remote SVGs</button>
             </div>
           </div>
 
@@ -304,5 +284,5 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         </body>
       </html>
     `;
-  }
+	}
 }
