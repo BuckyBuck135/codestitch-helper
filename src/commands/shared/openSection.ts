@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { CodeSection } from "../utils/sectionUtils";
+import { CodeSection } from "../../utils/sectionUtils";
 
 export function openSection(section: CodeSection) {
   const document = section.document;

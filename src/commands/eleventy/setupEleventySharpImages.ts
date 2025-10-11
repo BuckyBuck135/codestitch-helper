@@ -67,7 +67,7 @@ async function updateEleventyConfig(workspacePath: string, isNetlify: boolean) {
         return;
     }
 
-    if (data.includes('eleventyPluginSharpImages')) {
+    if (data.includes('@codestitchofficial/eleventy-plugin-sharp-images')) {
         vscode.window.showInformationMessage('eleventy-plugin-sharp-images is already configured in .eleventy.js');
         return;
     }

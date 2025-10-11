@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { getSectionsFromDocument, CodeSection } from "../utils/sectionUtils";
+import { getSectionsFromDocument, CodeSection } from "../../utils/sectionUtils";
 
 export async function reorderSections() {
   const editor = vscode.window.activeTextEditor;

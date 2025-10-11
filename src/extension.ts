@@ -1,28 +1,53 @@
 import * as vscode from "vscode";
 import { SectionNavigationProvider } from "./providers/sectionNavigationProvider";
-import { replaceNavTabs } from "./commands/replaceNavTabs";
-import { selectAll } from "./commands/selectAll";
-import { openSection } from "./commands/openSection";
+import { replaceNavTabs } from "./commands/eleventy/replaceNavTabs";
+import { selectAll } from "./commands/shared/selectAll";
+import { openSection } from "./commands/shared/openSection";
 import { CodeLensProvider } from "./providers/codeLensProvider";
-import { addIconClass } from "./commands/addIconClass";
-import { convertToNetlifyForm } from "./commands/convertToNetlifyForm";
-import { optimizeSharpImages } from "./commands/optimizeSharpImages";
+import { addIconClass } from "./commands/shared/addIconClass";
+import { convertToNetlifyForm } from "./commands/shared/convertToNetlifyForm";
+import { optimizeSharpImages } from "./commands/eleventy/optimizeSharpImages";
+import { optimizeAstroImages } from "./commands/astro/optimizeAstroImages";
+import { transformSvgToIcon } from "./commands/astro/transformSvgToIcon";
 import {
   navigateToSectionCSS,
   navigateToSectionCSSCommandId,
-} from "./commands/navigateToSectionCSS";
-import { setupEleventySharpImages } from "./commands/setupEleventySharpImages";
-import { optimizeStylesheet } from "./commands/optimizeStylesheet";
-import { navigateToCodeStitch } from "./commands/navigateToCodeStitch";
-import { reorderSections } from "./commands/reorderSections";
+} from "./commands/shared/navigateToSectionCSS";
+import { setupEleventySharpImages } from "./commands/eleventy/setupEleventySharpImages";
+import { optimizeStylesheet } from "./commands/shared/optimizeStylesheet";
+import { navigateToCodeStitch } from "./commands/shared/navigateToCodeStitch";
+import { reorderSections } from "./commands/shared/reorderSections";
 import { CodeSection } from "./utils/sectionUtils";
-import { downloadSvgAssets } from "./commands/downloadSvgAssets";
+import { downloadRemoteSvgs } from "./commands/shared/downloadRemoteSvgs";
+import { downloadImage } from "./commands/shared/downloadImage";
+import { downloadRemoteImages } from "./commands/shared/downloadRemoteImages";
+import { replaceWithLocalImage } from "./commands/shared/replaceWithLocalImage";
 import * as path from "path";
 import * as fs from "fs";
-import { SidebarProvider } from "./providers/SidebarProvider";
+import { SidebarProvider } from "./providers/sidebarProvider";
+import { ProjectTypeManager } from "./services/projectTypeManager";
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   console.log("codestitch-helper is now active!");
+
+  // Initialize ProjectTypeManager and detect project type
+  const projectTypeManager = new ProjectTypeManager(context);
+  const projectType = await projectTypeManager.detect();
+
+  if (projectType === "unknown") {
+    vscode.window.showWarningMessage(
+      "CodeStitch Helper: Could not auto-detect project type (Eleventy/Astro). Please set it manually in the sidebar.",
+      "Open Sidebar"
+    ).then((selection) => {
+      if (selection === "Open Sidebar") {
+        vscode.commands.executeCommand("workbench.view.extension.codestitchHelperContainer");
+      }
+    });
+  } else {
+    vscode.window.showInformationMessage(
+      `CodeStitch Helper: Detected ${projectType === "eleventy" ? "Eleventy" : "Astro"} project`
+    );
+  }
 
   const sectionNavProvider = new SectionNavigationProvider();
   vscode.window.registerTreeDataProvider(
@@ -30,6 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
     sectionNavProvider
   );
 
+  // Register shared commands (always available)
   const openSectionDisposable = vscode.commands.registerCommand(
     "codestitchHelper.openSection",
     (section: CodeSection) => {
@@ -41,13 +67,6 @@ export function activate(context: vscode.ExtensionContext) {
     "codestitchHelper.selectAll",
     (section: CodeSection) => {
       selectAll(section);
-    }
-  );
-
-  const replaceNavTabsDisposable = vscode.commands.registerCommand(
-    "codestitchHelper.replaceNavTabs",
-    (document: vscode.TextDocument) => {
-      replaceNavTabs(document);
     }
   );
 
@@ -65,23 +84,9 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  const optimizeSharpImagesDisposable = vscode.commands.registerCommand(
-    "codestitchHelper.optimizeSharpImages",
-    (document: vscode.TextDocument, range: vscode.Range) => {
-      optimizeSharpImages(document, range);
-    }
-  );
-
   const navigateToSectionCSSDisposable = vscode.commands.registerCommand(
     navigateToSectionCSSCommandId,
     navigateToSectionCSS
-  );
-
-  const setupEleventySharpImagesDisposable = vscode.commands.registerCommand(
-    "codestitchHelper.setupEleventySharpImages",
-    () => {
-      setupEleventySharpImages();
-    }
   );
 
   const optimizeStylesheetDisposable = vscode.commands.registerCommand(
@@ -105,19 +110,114 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  const downloadSvgAssetsDisposable = vscode.commands.registerCommand(
-    "codestitchHelper.downloadSvgAssets",
-    downloadSvgAssets
+  const downloadRemoteSvgsDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.downloadRemoteSvgs",
+    () => {
+      downloadRemoteSvgs(projectTypeManager);
+    }
   );
 
-  // Ensure the Explorer view is open
-  vscode.commands.executeCommand("workbench.view.explorer"); // No need to focus on a specific view
+  const downloadImageDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.downloadImage",
+    (document: vscode.TextDocument, range: vscode.Range) => {
+      downloadImage(document, range, projectTypeManager);
+    }
+  );
 
-  // Register CodeLensProvider for both HTML and SCSS
+  const downloadRemoteImagesDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.downloadRemoteImages",
+    () => {
+      downloadRemoteImages(projectTypeManager);
+    }
+  );
+
+  const replaceWithLocalImageDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.replaceWithLocalImage",
+    (document: vscode.TextDocument, range: vscode.Range) => {
+      replaceWithLocalImage(document, range, projectTypeManager);
+    }
+  );
+
+  // Register project type management command
+  const setProjectTypeDisposable = vscode.commands.registerCommand(
+    "codestitchHelper.setProjectType",
+    async () => {
+      const selection = await vscode.window.showQuickPick(
+        ["Eleventy", "Astro"],
+        {
+          placeHolder: "Select your project type",
+        }
+      );
+
+      if (selection) {
+        const newType = selection.toLowerCase() as "eleventy" | "astro";
+        await projectTypeManager.setProjectType(newType);
+        vscode.window.showInformationMessage(
+          `Project type set to ${selection}. Reloading extension...`
+        );
+        await vscode.commands.executeCommand("workbench.action.reloadWindow");
+      }
+    }
+  );
+
+  // Register framework-specific commands based on project type
+  if (projectTypeManager.isEleventy()) {
+    const replaceNavTabsDisposable = vscode.commands.registerCommand(
+      "codestitchHelper.eleventy.replaceNavTabs",
+      (document: vscode.TextDocument) => {
+        replaceNavTabs(document);
+      }
+    );
+
+    const optimizeSharpImagesDisposable = vscode.commands.registerCommand(
+      "codestitchHelper.eleventy.optimizeImages",
+      (document: vscode.TextDocument, range: vscode.Range) => {
+        optimizeSharpImages(document, range);
+      }
+    );
+
+    const setupEleventySharpImagesDisposable = vscode.commands.registerCommand(
+      "codestitchHelper.eleventy.setupSharpImages",
+      () => {
+        setupEleventySharpImages();
+      }
+    );
+
+    context.subscriptions.push(
+      replaceNavTabsDisposable,
+      optimizeSharpImagesDisposable,
+      setupEleventySharpImagesDisposable
+    );
+  } else if (projectTypeManager.isAstro()) {
+    const optimizeAstroImagesDisposable = vscode.commands.registerCommand(
+      "codestitchHelper.astro.optimizeImages",
+      (document: vscode.TextDocument, range: vscode.Range) => {
+        optimizeAstroImages(document, range);
+      }
+    );
+
+    const transformSvgToIconDisposable = vscode.commands.registerCommand(
+      "codestitchHelper.astro.transformSvgToIcon",
+      (document: vscode.TextDocument, range: vscode.Range) => {
+        transformSvgToIcon(document, range);
+      }
+    );
+
+    context.subscriptions.push(
+      optimizeAstroImagesDisposable,
+      transformSvgToIconDisposable
+    );
+  }
+
+  // Ensure the Explorer view is open
+  vscode.commands.executeCommand("workbench.view.explorer");
+
+  // Register CodeLensProvider with ProjectTypeManager
+  const codeLensProvider = new CodeLensProvider(projectTypeManager);
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(
       { language: "*" },
-      new CodeLensProvider()
+      codeLensProvider
     )
   );
 
@@ -129,6 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
     "njk",
     "nunjucks",
     "html",
+    "astro",
   ];
   vscode.workspace.onDidChangeTextDocument((event) => {
     if (supportedLanguages.includes(event.document.languageId)) {
@@ -149,38 +250,29 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(
-    optimizeSharpImagesDisposable,
     openSectionDisposable,
     selectAllDisposable,
-    replaceNavTabsDisposable,
     addIconClassDisposable,
     convertToNetlifyFormDisposable,
     navigateToSectionCSSDisposable,
-    setupEleventySharpImagesDisposable,
     optimizeStylesheetDisposable,
     navigateToCodeStitchDisposable,
     reorderSectionsDisposable,
-    downloadSvgAssetsDisposable
+    downloadRemoteSvgsDisposable,
+    downloadImageDisposable,
+    downloadRemoteImagesDisposable,
+    replaceWithLocalImageDisposable,
+    setProjectTypeDisposable
   );
 
-  // Register Sidebar Provider
-  const provider = new SidebarProvider(context.extensionUri);
+  // Register Sidebar Provider with ProjectTypeManager
+  const provider = new SidebarProvider(context.extensionUri, projectTypeManager);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
       SidebarProvider.viewType,
       provider
     )
   );
-
-  // Register optimize site command
-  const optimizeSiteDisposable = vscode.commands.registerCommand(
-    "codestitchHelper.optimizeSite",
-    () => {
-      vscode.window.showInformationMessage("Optimizing site...");
-      // Add your site optimization logic here
-    }
-  );
-  context.subscriptions.push(optimizeSiteDisposable);
 }
 
 export function deactivate() {}

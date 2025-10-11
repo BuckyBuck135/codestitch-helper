@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { CodeSection, selectSection } from "../utils/sectionUtils";
+import { CodeSection, selectSection } from "../../utils/sectionUtils";
 
 export function selectAll(section: CodeSection) {
   const document = section.document;

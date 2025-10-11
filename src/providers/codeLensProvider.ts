@@ -1,146 +1,221 @@
 import * as vscode from "vscode";
-import { navigateToSectionCSSCommandId } from "../commands/navigateToSectionCSS";
+import { navigateToSectionCSSCommandId } from "../commands/shared/navigateToSectionCSS";
+import { ProjectTypeManager } from "../services/projectTypeManager";
+import { isRemoteImageUrl } from "../utils/imageDownloader";
 
 export class CodeLensProvider implements vscode.CodeLensProvider {
-  onDidChangeCodeLenses?: vscode.Event<void> | undefined;
+	onDidChangeCodeLenses?: vscode.Event<void> | undefined;
 
-  public provideCodeLenses(
-    document: vscode.TextDocument,
-    token: vscode.CancellationToken
-  ): vscode.ProviderResult<vscode.CodeLens[]> {
-    const codeLenses: vscode.CodeLens[] = [];
-    const text = document.getText();
-    let match: RegExpExecArray | null;
+	constructor(private readonly projectTypeManager: ProjectTypeManager) {}
 
-    // Regex to find the <div class="cs-ul-wrapper"> line
-    const divPattern = /<div class="cs-ul-wrapper">[\s\S]*?<\/div>/g;
-    while ((match = divPattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length); // Find the full <div> tag
-      const range = new vscode.Range(startPosition, endPosition);
+	public provideCodeLenses(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.CodeLens[]> {
+		const codeLenses: vscode.CodeLens[] = [];
+		const text = document.getText();
+		let match: RegExpExecArray | null;
 
-      // Create a new CodeLens above the <div>
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Make compatible with 11ty",
-          command: "codestitchHelper.replaceNavTabs",
-          arguments: [document],
-        })
-      );
-    }
+		// Regex to find the <div class="cs-ul-wrapper"> line (Eleventy only)
+		if (this.projectTypeManager.isEleventy()) {
+			const divPattern = /<div class="cs-ul-wrapper">[\s\S]*?<\/div>/g;
+			while ((match = divPattern.exec(text)) !== null) {
+				const startPosition = document.positionAt(match.index);
+				const endPosition = document.positionAt(match.index + match[0].length);
+				const range = new vscode.Range(startPosition, endPosition);
 
-    const formPattern = /<form[\s\S]*?>/g;
-    while ((match = formPattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length); // Find the full <form> tag
-      const range = new vscode.Range(startPosition, endPosition);
+				codeLenses.push(
+					new vscode.CodeLens(range, {
+						title: "Make compatible with 11ty",
+						command: "codestitchHelper.eleventy.replaceNavTabs",
+						arguments: [document],
+					})
+				);
+			}
+		}
 
-      // Create a new CodeLens above the form tag
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Convert to Netlify Form",
-          command: "codestitchHelper.convertToNetlifyForm",
-          arguments: [document],
-        })
-      );
-    }
+		const formPattern = /<form[\s\S]*?>/g;
+		while ((match = formPattern.exec(text)) !== null) {
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length); // Find the full <form> tag
+			const range = new vscode.Range(startPosition, endPosition);
 
-    // Regex to find <svg> tags without the class "cs-icon"
-    const svgPattern = /<svg([^>]*?)>/g;
-    while ((match = svgPattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length); // Find the full <svg> tag
-      const range = new vscode.Range(startPosition, endPosition);
+			// Create a new CodeLens above the form tag
+			codeLenses.push(
+				new vscode.CodeLens(range, {
+					title: "Convert to Netlify Form",
+					command: "codestitchHelper.convertToNetlifyForm",
+					arguments: [document],
+				})
+			);
+		}
 
-      // Check if the svg tag already has the cs-icon class
-      if (!match[0].includes('class="cs-icon"')) {
-        codeLenses.push(
-          new vscode.CodeLens(range, {
-            title: "Add cs-icon class",
-            command: "codestitchHelper.addIconClass",
-            arguments: [document, range],
-          })
-        );
-      }
-    }
+		// Regex to find <svg> tags without the class "cs-icon"
+		const svgPattern = /<svg([^>]*?)>/g;
+		while ((match = svgPattern.exec(text)) !== null) {
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length); // Find the full <svg> tag
+			const range = new vscode.Range(startPosition, endPosition);
 
-    // Regex to find any <picture> tags regardless of attributes
-    const picturePattern = /<picture\b[^>]*>[\s\S]*?<\/picture>/g;
-    while ((match = picturePattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length);
-      const range = new vscode.Range(startPosition, endPosition);
+			// Check if the svg tag already has the cs-icon class
+			if (!match[0].includes('class="cs-icon"')) {
+				codeLenses.push(
+					new vscode.CodeLens(range, {
+						title: "Add cs-icon class",
+						command: "codestitchHelper.addIconClass",
+						arguments: [document, range],
+					})
+				);
+			}
+		}
 
-      // Add lens for the entire picture block
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Optimize sharp images",
-          command: "codestitchHelper.optimizeSharpImages",
-          arguments: [document, range],
-        })
-      );
-    }
+		// Regex to find any <picture> tags regardless of attributes
+		const picturePattern = /<picture\b[^>]*>[\s\S]*?<\/picture>/g;
+		while ((match = picturePattern.exec(text)) !== null) {
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length);
+			const range = new vscode.Range(startPosition, endPosition);
+			const pictureContent = match[0];
 
-    // Regex to find <section> tags with an id attribute
-    const sectionPattern = /<section[^>]*id="([^"]+)"[^>]*>/g;
-    while ((match = sectionPattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length);
-      const range = new vscode.Range(startPosition, endPosition);
+			// Check if picture contains remote URLs
+			const hasRemoteUrl = /(?:src|srcset)=["'](https?:\/\/[^"']+)["']/i.test(pictureContent);
 
-      // Create a new CodeLens above the section tag
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Go to Styling",
-          command: navigateToSectionCSSCommandId,
-          arguments: [document, range],
-        })
-      );
-    }
+			if (hasRemoteUrl) {
+				// Show both "Choose Local Image" and "Download Remote Image"
+				codeLenses.push(
+					new vscode.CodeLens(range, {
+						title: "Choose Local Image",
+						command: "codestitchHelper.replaceWithLocalImage",
+						arguments: [document, range],
+					})
+				);
+				codeLenses.push(
+					new vscode.CodeLens(range, {
+						title: "Download Remote Image",
+						command: "codestitchHelper.downloadImage",
+						arguments: [document, range],
+					})
+				);
+			} else {
+				// Show optimization based on project type for local images
+				if (this.projectTypeManager.isEleventy()) {
+					codeLenses.push(
+						new vscode.CodeLens(range, {
+							title: "Optimize with Sharp",
+							command: "codestitchHelper.eleventy.optimizeImages",
+							arguments: [document, range],
+						})
+					);
+				} else if (this.projectTypeManager.isAstro()) {
+					codeLenses.push(
+						new vscode.CodeLens(range, {
+							title: "Optimize with <Picture />",
+							command: "codestitchHelper.astro.optimizeImages",
+							arguments: [document, range],
+						})
+					);
+				}
+			}
+		}
 
-    // Add this to your existing patterns in provideCodeLenses
-    const linkPattern =
-      /<link\s+rel=["']stylesheet["']\s+href=["'][^"']+["']\s*\/?>/g;
-    while ((match = linkPattern.exec(text)) !== null) {
-      // Check if this link is inside a noscript tag
-      const upToMatch = text.slice(0, match.index);
-      const lastNoscriptStart = upToMatch.lastIndexOf("<noscript");
-      const lastNoscriptEnd = upToMatch.lastIndexOf("</noscript");
+		// Regex to find <img> tags with remote raster image URLs (exclude SVGs)
+		const imgPattern = /<img[^>]+src=["'](https?:\/\/[^"']+\.(?:jpg|jpeg|png|webp|avif)[^"']*)["'][^>]*>/gi;
+		while ((match = imgPattern.exec(text)) !== null) {
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length);
+			const range = new vscode.Range(startPosition, endPosition);
 
-      // Skip if we're inside a noscript tag
-      if (lastNoscriptStart > lastNoscriptEnd) {
-        continue;
-      }
+			// Show both "Choose Local Image" and "Download Remote Image" for remote img tags
+			codeLenses.push(
+				new vscode.CodeLens(range, {
+					title: "Choose Local Image",
+					command: "codestitchHelper.replaceWithLocalImage",
+					arguments: [document, range],
+				})
+			);
+			codeLenses.push(
+				new vscode.CodeLens(range, {
+					title: "Download Remote Image",
+					command: "codestitchHelper.downloadImage",
+					arguments: [document, range],
+				})
+			);
+		}
 
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length);
-      const range = new vscode.Range(startPosition, endPosition);
+		// Regex to find <img> tags with remote SVG URLs (Astro only)
+		if (this.projectTypeManager.isAstro()) {
+			const svgImgPattern = /<img[^>]+src=["'](https?:\/\/[^"']+\.svg[^"']*)["'][^>]*>/gi;
+			while ((match = svgImgPattern.exec(text)) !== null) {
+				const startPosition = document.positionAt(match.index);
+				const endPosition = document.positionAt(match.index + match[0].length);
+				const range = new vscode.Range(startPosition, endPosition);
 
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Optimize Stylesheet",
-          command: "codestitchHelper.optimizeStylesheet",
-          arguments: [document, match[0]],
-        })
-      );
-    }
+				codeLenses.push(
+					new vscode.CodeLens(range, {
+						title: "Optimize with <Icon />",
+						command: "codestitchHelper.astro.transformSvgToIcon",
+						arguments: [document, range],
+					})
+				);
+			}
+		}
 
-    const sectionIdPattern = /section\s+id="[a-zA-Z-]*(\d+)"/g;
-    while ((match = sectionIdPattern.exec(text)) !== null) {
-      const startPosition = document.positionAt(match.index);
-      const endPosition = document.positionAt(match.index + match[0].length);
-      const range = new vscode.Range(startPosition, endPosition);
-      const numberId = match[1]; // This will capture only the numeric portion
+		// Regex to find <section> tags with an id attribute
+		const sectionPattern = /<section[^>]*id="([^"]+)"[^>]*>/g;
+		while ((match = sectionPattern.exec(text)) !== null) {
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length);
+			const range = new vscode.Range(startPosition, endPosition);
 
-      codeLenses.push(
-        new vscode.CodeLens(range, {
-          title: "Open in CodeStitch",
-          command: "codestitchHelper.navigateToCodeStitch",
-          arguments: [numberId],
-        })
-      );
-    }
+			// Create a new CodeLens above the section tag
+			codeLenses.push(
+				new vscode.CodeLens(range, {
+					title: "Go to Styling",
+					command: navigateToSectionCSSCommandId,
+					arguments: [document, range],
+				})
+			);
+		}
 
-    return codeLenses;
-  }
+		// Add this to your existing patterns in provideCodeLenses
+		const linkPattern = /<link\s+rel=["']stylesheet["']\s+href=["'][^"']+["']\s*\/?>/g;
+		while ((match = linkPattern.exec(text)) !== null) {
+			// Check if this link is inside a noscript tag
+			const upToMatch = text.slice(0, match.index);
+			const lastNoscriptStart = upToMatch.lastIndexOf("<noscript");
+			const lastNoscriptEnd = upToMatch.lastIndexOf("</noscript");
+
+			// Skip if we're inside a noscript tag
+			if (lastNoscriptStart > lastNoscriptEnd) {
+				continue;
+			}
+
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length);
+			const range = new vscode.Range(startPosition, endPosition);
+
+			codeLenses.push(
+				new vscode.CodeLens(range, {
+					title: "Optimize Stylesheet",
+					command: "codestitchHelper.optimizeStylesheet",
+					arguments: [document, match[0]],
+				})
+			);
+		}
+
+		const sectionIdPattern = /section\s+id="[a-zA-Z-]*(\d+)"/g;
+		while ((match = sectionIdPattern.exec(text)) !== null) {
+			const startPosition = document.positionAt(match.index);
+			const endPosition = document.positionAt(match.index + match[0].length);
+			const range = new vscode.Range(startPosition, endPosition);
+			const numberId = match[1]; // This will capture only the numeric portion
+
+			codeLenses.push(
+				new vscode.CodeLens(range, {
+					title: "Open in CodeStitch",
+					command: "codestitchHelper.navigateToCodeStitch",
+					arguments: [numberId],
+				})
+			);
+		}
+
+		return codeLenses;
+	}
 }
