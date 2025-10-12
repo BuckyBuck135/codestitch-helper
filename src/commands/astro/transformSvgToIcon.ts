@@ -14,7 +14,7 @@ function walkNode(node: any, callback: (node: any) => void) {
 }
 
 function isPositionInNode(position: vscode.Position, node: any, document: vscode.TextDocument): boolean {
-	if (!node.position) return false;
+	if (!node.position) {return false;}
 
 	const start = node.position.start;
 	const end = node.position.end;

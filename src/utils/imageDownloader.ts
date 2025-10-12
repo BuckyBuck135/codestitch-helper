@@ -210,7 +210,7 @@ export function urlToImportName(url: string): string {
 		}
 
 		const title = filename.split(".")[0];
-		if (!title) return "image";
+		if (!title) {return "image";}
 
 		// Convert kebab-case and snake_case to camelCase
 		// Remove non-alphanumeric characters except hyphens and underscores first

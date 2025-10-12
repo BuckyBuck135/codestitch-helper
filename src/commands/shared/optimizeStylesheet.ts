@@ -8,7 +8,7 @@ export async function optimizeStylesheet(
 
   // Create the optimized version of the link tag
   const href = linkTag.match(/href=["']([^"']+)["']/)?.[1];
-  if (!href) return;
+  if (!href) {return;}
 
   const optimizedLink = `<link rel="stylesheet" href="${href}" media="print" onload="this.media='all'; this.onload=null;">
     <noscript>

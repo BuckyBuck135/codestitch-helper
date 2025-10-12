@@ -13,7 +13,7 @@ const NUMERIC_ATTRS = ["width"];
 export const urlToVariableName = (url: string): string => {
 	const filename = path.basename(url);
 	const title = filename.split(".")[0];
-	if (!title) return "image";
+	if (!title) {return "image";}
 
 	let cleanTitle = title.replace(/[^a-zA-Z0-9-_]/g, "");
 	cleanTitle = cleanTitle.replace(/[-_]([a-zA-Z0-9])/g, (match: any, char: any) => char.toUpperCase());
