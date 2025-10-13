@@ -41,7 +41,7 @@ export async function reorderSections() {
             })),
             { placeHolder: "Select an HTML file to use for ordering" }
           );
-          if (!selected) return;
+          if (!selected) {return;}
           htmlUri = selected.uri;
         } else {
           htmlUri = htmlFiles[0];

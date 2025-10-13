@@ -46,7 +46,7 @@ export async function optimizeSharpImages(
   range: vscode.Range
 ) {
   const editor = vscode.window.activeTextEditor;
-  if (!editor) return;
+  if (!editor) {return;}
 
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (!workspaceFolders) {
@@ -122,8 +122,8 @@ export async function optimizeSharpImages(
     }
 
     // Set default dimensions if none found
-    if (width === null) width = 1000;
-    if (height === null) height = 1000;
+    if (width === null) {width = 1000;}
+    if (height === null) {height = 1000;}
 
     // Construct the resize parameters
     let resizeParams = `{width: ${width}`;
